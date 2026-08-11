@@ -1,0 +1,58 @@
+SWITCHING ON THE UTILITIES WEB PAGE
+
+One-time setup. Takes about 2 minutes. You only need a browser
+signed in to GitHub.
+
+When it is done, your tools live at:
+
+https://moshgrossman.github.io/Utilities/
+
+
+1. Open github.com/moshgrossman/Utilities in Chrome.
+
+
+2. Tap "Settings" — the tab with the gear, near the top of the
+repo page. If you do not see it, widen the window, or tap the
+"..." at the end of the tab row.
+
+
+3. In the list on the left, tap "Pages".
+
+
+4. Under "Build and deployment", check that "Source" says
+"Deploy from a branch". If it does not, choose that.
+
+
+5. Under "Branch", tap the dropdown that says "None" and choose
+"main". Leave the folder next to it as "/ (root)". Tap "Save".
+
+
+6. Wait about one minute, then refresh the page. You should see a
+box at the top saying: "Your site is live at
+https://moshgrossman.github.io/Utilities/".
+
+If it still shows nothing, wait another minute and refresh again —
+the first build can be slow.
+
+
+7. Tap "Visit site". You should see the dark Utilities page with
+two buttons: the converter and the audio finder. Tap the converter
+button and check it opens.
+
+
+8. Optional but worth it: with the site open in Chrome, tap the
+three-dot menu, then "Add to Home screen", then "Add". The tools
+will open like an app from your home screen from now on.
+
+
+IF THE SITE NEVER LOADS ON YOUR TABLET but works on another
+device: that is the content filter not knowing github.io yet. Ask
+for a permanent exception for moshgrossman.github.io — it is a
+page of your own tools, nothing else, so it is an easy one to
+describe. Until then, the downloaded-file way keeps working
+exactly as before.
+
+
+FROM NOW ON: any new tool added to the repo as an HTML file is
+automatically on the site about a minute after it lands on main.
+No re-setup needed.
