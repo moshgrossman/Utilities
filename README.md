@@ -12,7 +12,7 @@ the one-time switch-on).
 
 | Tool | File | Version |
 |---|---|---|
-| Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `bulktotxtconverter.html` | 3.1 |
+| Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `bulktotxtconverter.html` | 3.2 |
 | Audio Finder — pulls audio links out of a Chrome network log | `audio-finder.html` | — |
 
 ## Adding a new tool

@@ -41,8 +41,10 @@ button and check it opens.
 
 
 8. Optional but worth it: with the site open in Chrome, tap the
-three-dot menu, then "Add to Home screen", then "Add". The tools
-will open like an app from your home screen from now on.
+three-dot menu, then "Install app" (on some versions it says
+"Add to Home screen"), then confirm. The tools open in their own
+window from your home screen from now on — see open-as-app.txt
+for the details.
 
 
 IF THE SITE NEVER LOADS ON YOUR TABLET but works on another
