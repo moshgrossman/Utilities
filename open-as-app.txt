@@ -1,0 +1,35 @@
+MAKING THE UTILITIES SITE OPEN IN ITS OWN WINDOW
+
+Takes about 1 minute. Do it on each device where you want the
+tools to feel like an app.
+
+One thing first: if you added the site to your home screen BEFORE
+today, that old shortcut only opens Chrome. Remove it and add it
+fresh — the steps below cover both.
+
+
+1. Press and hold the old Utilities icon on your home screen, then
+choose "Remove". This removes only the shortcut — the site itself
+is untouched.
+
+
+2. Open https://moshgrossman.github.io/Utilities/ in Chrome.
+
+
+3. Tap Chrome's three-dot menu and look for "Install app". On some
+versions it says "Add to Home screen" instead — that is fine too.
+Tap it.
+
+
+4. Tap "Install" (or "Add").
+
+
+5. Find the new icon on your home screen — a yellow U on black —
+and tap it. The site opens in its own window: no address bar, no
+Chrome tabs, and it shows up in your recent-apps list like any
+other app. In DeX it gets its own desktop-style window.
+
+
+IF IT STILL OPENS INSIDE CHROME: Chrome sometimes needs a minute
+to notice a site became installable. Close the tab, reopen the
+site, wait a few seconds, and try the menu again.
