@@ -12,8 +12,13 @@ the one-time switch-on).
 
 | Tool | File | Version |
 |---|---|---|
-| Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `bulktotxtconverter.html` | 3.2 |
-| Audio Finder — pulls audio links out of a Chrome network log | `audio-finder.html` | — |
+| Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `bulktotxtconverter.html` | 3.3 |
+| Audio Finder — pulls audio links out of a Chrome network log | `audio-finder.html` | 1.1 |
+
+Each tool page carries its own web app manifest, so every tool is
+installable as a separate app (its own icon, its own window); the front
+page installs as the all-in-one launcher. A new tool should get its own
+`manifest-<name>.json` and icons the same way.
 
 ## Adding a new tool
 
