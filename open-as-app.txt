@@ -1,35 +1,44 @@
-MAKING THE UTILITIES SITE OPEN IN ITS OWN WINDOW
+INSTALLING THE TOOLS AS THEIR OWN APPS
 
-Takes about 1 minute. Do it on each device where you want the
-tools to feel like an app.
+Each tool installs as its own app with its own icon and window.
+The front page installs as an all-in-one launcher. About a minute
+per app, on each device where you want it.
 
-One thing first: if you added the site to your home screen BEFORE
-today, that old shortcut only opens Chrome. Remove it and add it
-fresh — the steps below cover both.
-
-
-1. Press and hold the old Utilities icon on your home screen, then
-choose "Remove". This removes only the shortcut — the site itself
-is untouched.
+One thing first: icons added to the home screen BEFORE this
+existed only open Chrome. Remove those (press and hold the icon,
+then "Remove") and install fresh.
 
 
-2. Open https://moshgrossman.github.io/Utilities/ in Chrome.
+1. In Chrome, open the page you want as an app:
+
+For the converter:
+https://moshgrossman.github.io/Utilities/bulktotxtconverter.html
+
+For Audio Finder:
+https://moshgrossman.github.io/Utilities/audio-finder.html
+
+For the all-in-one launcher, the front page:
+https://moshgrossman.github.io/Utilities/
 
 
-3. Tap Chrome's three-dot menu and look for "Install app". On some
-versions it says "Add to Home screen" instead — that is fine too.
-Tap it.
+2. Tap Chrome's three-dot menu, then "Install app". On some
+versions it says "Add to Home screen" — same thing, tap it.
 
 
-4. Tap "Install" (or "Add").
+3. Tap "Install" (or "Add").
 
 
-5. Find the new icon on your home screen — a yellow U on black —
-and tap it. The site opens in its own window: no address bar, no
-Chrome tabs, and it shows up in your recent-apps list like any
-other app. In DeX it gets its own desktop-style window.
+4. Find the new icon on your home screen: a yellow page for the
+converter, teal headphones for Audio Finder, a yellow U for the
+launcher. Tap it — the tool opens in its own window, no address
+bar, with its own entry in recent apps. In DeX it gets its own
+desktop-style window.
 
 
-IF IT STILL OPENS INSIDE CHROME: Chrome sometimes needs a minute
-to notice a site became installable. Close the tab, reopen the
-site, wait a few seconds, and try the menu again.
+5. Repeat from step 1 for the next tool you want.
+
+
+IF "INSTALL APP" DOES NOT APPEAR IN THE MENU: Chrome sometimes
+needs a moment to notice a page became installable. Close the
+tab, reopen the page, wait a few seconds, and check the menu
+again.
