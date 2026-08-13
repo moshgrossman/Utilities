@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14181c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="../icons/icon-audio-finder-192.png">
+<title>Audio Finder — pull audio links out of a Chrome network log</title>
+<style>
+  :root{
+    --bg:#f7f6f3; --card:#ffffff; --ink:#1f2933; --muted:#5f6b76;
+    --line:#e3e0da; --accent:#0f766e; --accent-ink:#ffffff;
+    --ok:#15803d; --warn:#b45309; --bad:#b91c1c; --chip:#eef2f1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14181c; --card:#1e242a; --ink:#e8eaed; --muted:#9aa5af;
+      --line:#323a42; --accent:#2dd4bf; --accent-ink:#06302b;
+      --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; --chip:#28313a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+       font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       -webkit-tap-highlight-color:transparent}
+  main{max-width:760px; margin:0 auto; padding:20px 16px 60px}
+  h1{font-size:1.5rem; margin:8px 0 4px}
+  .sub{color:var(--muted); margin:0 0 20px}
+  details.help{background:var(--card); border:1px solid var(--line); border-radius:12px;
+       padding:12px 16px; margin-bottom:20px}
+  details.help summary{cursor:pointer; font-weight:600; min-height:32px}
+  details.help ol{margin:10px 0 4px; padding-left:22px}
+  details.help li{margin:6px 0}
+  .bigbtn{display:flex; align-items:center; justify-content:center; gap:10px;
+       min-height:64px; width:100%; background:var(--accent); color:var(--accent-ink);
+       border:none; border-radius:14px; font-size:1.15rem; font-weight:700;
+       cursor:pointer; text-align:center; padding:12px}
+  .bigbtn:active{opacity:.85}
+  #scanStatus{margin:16px 0; font-weight:600}
+  #results{margin-top:24px}
+  #summaryLine{font-weight:600}
+  .note{color:var(--muted); font-size:.9rem}
+  .warnnote{color:var(--warn); font-weight:600}
+  .toggle{display:flex; align-items:center; gap:10px; margin:10px 0; min-height:44px}
+  .toggle input, .selrow input, li input[type=checkbox]{width:22px; height:22px; flex:none}
+  .controlbar{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:14px 0}
+  .controlbar label{display:flex; align-items:center; gap:8px}
+  select{font-size:1rem; min-height:44px; border-radius:10px; border:1px solid var(--line);
+       background:var(--card); color:var(--ink); padding:0 8px}
+  button{font-size:1rem; min-height:48px; padding:0 18px; border-radius:12px;
+       border:1px solid var(--line); background:var(--card); color:var(--ink);
+       font-weight:600; cursor:pointer}
+  button:active{opacity:.85}
+  button.primary{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+  button.danger{background:var(--bad); color:#fff; border-color:transparent}
+  button.small{min-height:40px; padding:0 12px; font-size:.9rem}
+  button:disabled{opacity:.45; cursor:default}
+  .selrow{display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:14px 0 8px}
+  .selrow label{display:flex; align-items:center; gap:8px; min-height:44px; font-weight:600}
+  #selCount{color:var(--muted)}
+  #overall{margin:12px 0}
+  #overallTrack{height:8px; border-radius:4px; background:var(--chip); overflow:hidden}
+  #overallBar{height:100%; width:0%; background:var(--accent); transition:width .3s}
+  #overallText{display:block; margin-top:6px; font-weight:600}
+  ul#list{list-style:none; margin:0; padding:0}
+  ul#list li{background:var(--card); border:1px solid var(--line); border-radius:12px;
+       padding:12px 14px; margin:10px 0; display:flex; gap:12px; align-items:flex-start}
+  .rowbody{flex:1; min-width:0}
+  .fname{font-weight:700; word-break:break-all}
+  .meta{display:block; color:var(--muted); font-size:.85rem; margin-top:2px}
+  .url{display:block; color:var(--muted); font-size:.78rem; margin-top:4px;
+       word-break:break-all}
+  .numnote{color:var(--warn)}
+  .status{flex:none; font-size:.85rem; font-weight:700; padding:6px 10px;
+       border-radius:999px; background:var(--chip); align-self:center; white-space:nowrap}
+  .status.ok{color:var(--ok)} .status.bad{color:var(--bad)} .status.warn{color:var(--warn)}
+  .status a{color:inherit}
+  details#allDetails{margin-top:24px}
+  details#allDetails summary{cursor:pointer; min-height:44px; display:flex; align-items:center; font-weight:600}
+  #allList{font-size:.78rem; color:var(--muted); word-break:break-all}
+  #allList div{padding:4px 0; border-bottom:1px solid var(--line)}
+  .foot{margin-top:36px; color:var(--muted); font-size:.85rem; text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>&#127911; Audio Finder</h1>
+  <p class="sub">Finds audio links inside a Chrome network log (chrome://net-export) and saves them to your Downloads folder, one at a time.</p>
+
+  <details class="help">
+    <summary>How to make the log file</summary>
+    <ol>
+      <li>In Chrome, open <b>chrome://net-export</b> and tap <b>Start Logging to Disk</b>.</li>
+      <li>Go to the site and play (or start playing) each audio you want — this makes the links appear in the log.</li>
+      <li>Come back to net-export and tap <b>Stop Logging</b>, then save the .json with <b>"save to device"</b> into your Downloads.</li>
+      <li>Come back here and pick that file below.</li>
+    </ol>
+  </details>
+
+  <label class="bigbtn" id="pickLabel">&#128193; Pick the log file (.json)
+    <input type="file" id="fileInput" accept=".json,.txt,application/json,text/plain" hidden>
+  </label>
+
+  <div id="scanStatus" hidden>Reading the log&hellip;</div>
+
+  <section id="results" hidden>
+    <p id="summaryLine"></p>
+    <p id="hlsHint" class="note warnnote" hidden></p>
+
+    <label class="toggle"><input type="checkbox" id="numToggle" checked>
+      Number the files (01-, 02-) so they sort correctly — links that carry
+      their own number keep it</label>
+
+    <label class="toggle"><input type="checkbox" id="ambigToggle">
+      Also show .mp4 / .webm files (these can be video)</label>
+
+    <div class="controlbar">
+      <label>Wait between files
+        <select id="gapSel">
+          <option value="2">2 sec</option>
+          <option value="5" selected>5 sec</option>
+          <option value="10">10 sec</option>
+          <option value="20">20 sec</option>
+        </select>
+      </label>
+      <button id="btnDownload" class="primary">&#11015;&#65039; Download selected</button>
+      <button id="btnStop" class="danger" hidden>Stop</button>
+    </div>
+    <p class="note">Files download one at a time with a pause in between, so the tablet stays happy.
+      The first time, Chrome will ask permission to download multiple files — tap <b>Allow</b>.</p>
+
+    <div id="overall" hidden>
+      <div id="overallTrack"><div id="overallBar"></div></div>
+      <span id="overallText"></span>
+    </div>
+
+    <div class="selrow">
+      <label><input type="checkbox" id="selAll" checked> Select all</label>
+      <span id="selCount"></span>
+      <button id="btnCopy" class="small">Copy links</button>
+      <button id="btnList" class="small">Save link list</button>
+    </div>
+
+    <ul id="list"></ul>
+
+    <details id="allDetails">
+      <summary>Show every web address in the log (for checking)</summary>
+      <div id="allList"></div>
+    </details>
+  </section>
+
+  <p class="foot"><span id="verLine"></span>Everything happens right here on your device — the log file and the audio never go anywhere else.</p>
+</main>
+
+<script>
+'use strict';
+
+const APP_VERSION = '1.2';   // moves together with version.json at the repo root
+document.getElementById('verLine').textContent = 'Audio Finder v' + APP_VERSION + ' · ';
+
+/* ---------- finding audio links in the log ---------- */
+
+const AUDIO_EXT = /\.(mp3|m4a|m4b|aac|ogg|oga|opus|wav|flac|weba|amr|aiff|aif|wma|mka|mid|midi)([?#]|$)/i;
+const AMBIG_EXT = /\.(mp4|webm|m4s)([?#]|$)/i;
+const PLAYLIST_EXT = /\.(m3u8|mpd)([?#]|$)/i;
+
+function pathOf(url){
+  try { return new URL(url).pathname; } catch (e) { return url.split('?')[0].split('#')[0]; }
+}
+
+function isAudio(item){
+  const ct = (item.contentType || '').toLowerCase();
+  if (ct.startsWith('audio/')) return true;
+  if (ct.startsWith('video/') || ct.startsWith('text/') || ct.startsWith('image/')) return false;
+  return AUDIO_EXT.test(pathOf(item.url));
+}
+
+function isAmbiguous(item){
+  const ct = (item.contentType || '').toLowerCase();
+  if (ct.startsWith('video/') || ct.startsWith('text/') || ct.startsWith('image/')) return false;
+  return AMBIG_EXT.test(pathOf(item.url));
+}
+
+// The netlog file can be cut off mid-write if logging never got a clean "Stop",
+// so JSON.parse alone isn't enough — this walks the events array and keeps
+// every complete event it can find, ignoring a broken tail.
+function scanEventsFromBrokenJson(text){
+  const k = text.indexOf('"events"');
+  if (k < 0) return null;
+  const b = text.indexOf('[', k);
+  if (b < 0) return null;
+  const events = [];
+  let i = b + 1;
+  const n = text.length;
+  while (i < n){
+    while (i < n && (text[i] === ',' || text[i] === ' ' || text[i] === '\n' || text[i] === '\r' || text[i] === '\t')) i++;
+    if (i >= n || text[i] === ']') break;
+    if (text[i] !== '{') break;
+    let depth = 0, inStr = false, esc = false;
+    const start = i;
+    for (; i < n; i++){
+      const ch = text[i];
+      if (inStr){
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+      } else {
+        if (ch === '"') inStr = true;
+        else if (ch === '{') depth++;
+        else if (ch === '}'){ depth--; if (depth === 0){ i++; break; } }
+      }
+    }
+    if (depth !== 0) break;
+    try { events.push(JSON.parse(text.slice(start, i))); } catch (e) {}
+  }
+  return events;
+}
+
+function scanNetlog(text){
+  let events = null;
+  try {
+    const json = JSON.parse(text);
+    if (json && Array.isArray(json.events)) events = json.events;
+  } catch (e) {
+    events = scanEventsFromBrokenJson(text);
+  }
+
+  const found = new Map();   // url -> {url, contentType, size, order}
+  let order = 0, eventCount = 0, dupCount = 0;
+
+  function noteUrl(u){
+    if (!/^https?:\/\//i.test(u)) return null;
+    if (found.has(u)) { dupCount++; return found.get(u); }
+    const item = { url: u, contentType: null, size: null, order: order++ };
+    found.set(u, item);
+    return item;
+  }
+
+  if (events && events.length){
+    const lastUrlBySource = new Map();
+    for (const ev of events){
+      eventCount++;
+      const p = ev && ev.params;
+      if (!p) continue;
+      const sid = ev.source && ev.source.id;
+      const u = (typeof p.url === 'string' && p.url) ||
+                (typeof p.location === 'string' && p.location) || null;
+      if (u){
+        const item = noteUrl(u);
+        if (item && sid != null) lastUrlBySource.set(sid, item);
+      }
+      // Response-header events carry a plain "headers" array; request-header
+      // events also have a "line" field, which is how we tell them apart.
+      if (Array.isArray(p.headers) && !p.line && sid != null){
+        const item = lastUrlBySource.get(sid);
+        if (!item) continue;
+        for (const h of p.headers){
+          if (typeof h !== 'string') continue;
+          const c = h.indexOf(':');
+          if (c < 1) continue;
+          const name = h.slice(0, c).trim().toLowerCase();
+          const val = h.slice(c + 1).trim();
+          if (name === 'content-type' && !item.contentType){
+            item.contentType = val.split(';')[0].trim();
+          } else if (name === 'content-length'){
+            const nBytes = parseInt(val, 10);
+            if (nBytes > 0 && !item.size) item.size = nBytes;
+          } else if (name === 'content-range'){
+            // Media is often fetched in ranges; the real size is after the slash.
+            const m = /\/(\d+)\s*$/.exec(val);
+            if (m) item.size = parseInt(m[1], 10);
+          }
+        }
+      }
+    }
+  } else {
+    // Last resort: pull every "url"/"location" value straight out of the text.
+    const re = /"(?:url|location)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+    let m;
+    while ((m = re.exec(text))){
+      let u = m[1];
+      try { u = JSON.parse('"' + m[1] + '"'); } catch (e) {}
+      noteUrl(u);
+    }
+  }
+
+  const all = Array.from(found.values()).sort((a, b) => a.order - b.order);
+  return { all: all, eventCount: eventCount, dupCount: dupCount };
+}
+
+/* ---------- helpers ---------- */
+
+const CT_TO_EXT = { 'audio/mpeg':'mp3', 'audio/mp3':'mp3', 'audio/mp4':'m4a',
+  'audio/aac':'aac', 'audio/ogg':'ogg', 'audio/opus':'opus', 'audio/wav':'wav',
+  'audio/x-wav':'wav', 'audio/flac':'flac', 'audio/webm':'weba' };
+
+function filenameFor(item, idx){
+  let name = '';
+  try {
+    const parts = new URL(item.url).pathname.split('/').filter(Boolean);
+    name = decodeURIComponent(parts.pop() || '');
+  } catch (e) {}
+  name = name.replace(/[\\/:*?"<>|]/g, '_').trim();
+  if (!name) name = 'audio-' + (idx + 1);
+  if (!/\.[a-z0-9]{1,5}$/i.test(name)){
+    const ext = CT_TO_EXT[(item.contentType || '').toLowerCase()];
+    if (ext) name += '.' + ext;
+  }
+  return name;
+}
+
+// Numbers a link carries in its own file name (extension dropped).
+// Numbers longer than 4 digits are ignored — those are ids or
+// timestamps, not an order.
+function numbersInName(url){
+  let name = '';
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    name = decodeURIComponent(parts.pop() || '');
+  } catch (e) {}
+  name = name.replace(/\.[a-z0-9]{1,5}$/i, '');
+  const out = [];
+  const re = /\d+/g;
+  let m;
+  while ((m = re.exec(name))) if (m[0].length <= 4) out.push(parseInt(m[0], 10));
+  return out;
+}
+
+// The order number each link carries, per the rule: counting from the END
+// of the name, use the first position whose value actually differs between
+// files — so years and "part N of 12" totals, which repeat, are skipped.
+// Returns one number per item, null where the link has none.
+function linkOrderNumbers(items){
+  const lists = items.map(function(it){ return numbersInName(it.url); });
+  const maxLen = lists.reduce(function(a, l){ return Math.max(a, l.length); }, 0);
+  let pick = 1;
+  for (let k = 1; k <= maxLen; k++){
+    const vals = [];
+    lists.forEach(function(l){ if (l.length >= k) vals.push(l[l.length - k]); });
+    if (vals.length && vals.some(function(v){ return v !== vals[0]; })){ pick = k; break; }
+  }
+  return lists.map(function(l){
+    if (!l.length) return null;
+    return l.length >= pick ? l[l.length - pick] : l[l.length - 1];
+  });
+}
+
+function formatSize(n){
+  if (!n) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+  if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+  return (n / 1073741824).toFixed(2) + ' GB';
+}
+
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+/* ---------- page state & rendering ---------- */
+
+const $ = function(id){ return document.getElementById(id); };
+let scan = null;       // result of scanNetlog
+let shown = [];        // items currently listed (audio + maybe ambiguous)
+let running = false;
+let cancelRun = false;
+
+$('fileInput').addEventListener('change', async function(ev){
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  $('results').hidden = true;
+  $('scanStatus').hidden = false;
+  $('scanStatus').textContent = 'Reading the log… (' + formatSize(file.size) + ')';
+  await sleep(60); // let the message paint before the heavy work
+  let text = '';
+  try { text = await file.text(); }
+  catch (e){ $('scanStatus').textContent = 'Could not read that file: ' + e.message; return; }
+  $('scanStatus').textContent = 'Looking for audio links…';
+  await sleep(60);
+  try { scan = scanNetlog(text); }
+  catch (e){ $('scanStatus').textContent = 'Something went wrong while scanning: ' + e.message; return; }
+  $('scanStatus').hidden = true;
+  ev.target.value = '';   // so picking the same file again re-triggers the scan
+  renderResults();
+});
+
+$('ambigToggle').addEventListener('change', renderResults);
+$('numToggle').addEventListener('change', renderResults);
+
+function renderResults(){
+  const withAmbig = $('ambigToggle').checked;
+  const audio = scan.all.filter(isAudio);
+  const ambig = withAmbig ? scan.all.filter(function(it){ return !isAudio(it) && isAmbiguous(it); }) : [];
+  shown = audio.concat(ambig);
+  const numbered = $('numToggle').checked;
+  shown.forEach(function(it){ it.status = null; it.numNote = null; });
+  if (numbered && shown.length){
+    // Links that carry their own number keep it; the rest fill the unused
+    // positions in the order they appeared in the log. A number two links
+    // both claim goes to the first — the second gets a spare position and
+    // says so on its row.
+    const own = linkOrderNumbers(shown);
+    const finalNum = new Array(shown.length).fill(null);
+    const taken = {};
+    own.forEach(function(n, i){
+      if (n === null) return;
+      if (taken[n] === undefined){ taken[n] = i; finalNum[i] = n; }
+    });
+    let next = 1;
+    own.forEach(function(n, i){
+      if (finalNum[i] !== null) return;
+      while (taken[next] !== undefined) next++;
+      taken[next] = i; finalNum[i] = next;
+      if (n !== null){
+        shown[i].numNote = 'link says ' + n + ' but another file already has it — this one saved as ' + next;
+      }
+      next++;
+    });
+    const biggest = finalNum.reduce(function(a, b){ return Math.max(a, b); }, 0);
+    const width = Math.max(2, String(biggest).length);
+    shown.forEach(function(it, i){
+      it.filename = String(finalNum[i]).padStart(width, '0') + '-' + filenameFor(it, i);
+    });
+  } else {
+    shown.forEach(function(it, i){ it.filename = filenameFor(it, i); });
+  }
+
+  let line = 'Looked through ' + scan.eventCount.toLocaleString() + ' log entries and found ' +
+             audio.length + ' audio file' + (audio.length === 1 ? '' : 's') + '.';
+  if (ambig.length) line += ' (+' + ambig.length + ' maybe-video file' + (ambig.length === 1 ? '' : 's') + ')';
+  if (scan.dupCount) line += ' Repeated links were counted once.';
+  $('summaryLine').textContent = line;
+
+  const playlists = scan.all.filter(function(it){ return PLAYLIST_EXT.test(pathOf(it.url)); });
+  $('hlsHint').hidden = !(audio.length === 0 && playlists.length > 0);
+  if (!$('hlsHint').hidden){
+    $('hlsHint').textContent = 'This site seems to stream its audio in tiny chunks (found ' +
+      playlists.length + ' streaming playlist' + (playlists.length === 1 ? '' : 's') +
+      '), so there may be no whole audio files to save.';
+  }
+
+  const list = $('list');
+  list.textContent = '';
+  shown.forEach(function(it, i){
+    const li = document.createElement('li');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true; cb.dataset.i = i;
+    cb.addEventListener('change', updateSelCount);
+    const body = document.createElement('div');
+    body.className = 'rowbody';
+    const fname = document.createElement('span');
+    fname.className = 'fname'; fname.textContent = it.filename;
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = [formatSize(it.size), it.contentType].filter(Boolean).join(' · ') || 'size unknown';
+    const url = document.createElement('span');
+    url.className = 'url'; url.textContent = it.url;
+    body.appendChild(fname); body.appendChild(meta);
+    if (it.numNote){
+      const nn = document.createElement('span');
+      nn.className = 'meta numnote';
+      nn.textContent = '⚠ ' + it.numNote;
+      body.appendChild(nn);
+    }
+    body.appendChild(url);
+    const st = document.createElement('span');
+    st.className = 'status'; st.id = 'st-' + i; st.textContent = '';
+    li.appendChild(cb); li.appendChild(body); li.appendChild(st);
+    list.appendChild(li);
+  });
+
+  const allList = $('allList');
+  allList.textContent = '';
+  const CAP = 2000;
+  scan.all.slice(0, CAP).forEach(function(it){
+    const d = document.createElement('div');
+    d.textContent = it.url + (it.contentType ? '  [' + it.contentType + ']' : '');
+    allList.appendChild(d);
+  });
+  if (scan.all.length > CAP){
+    const d = document.createElement('div');
+    d.textContent = '… and ' + (scan.all.length - CAP) + ' more.';
+    allList.appendChild(d);
+  }
+  $('allDetails').querySelector('summary').textContent =
+    'Show every web address in the log (' + scan.all.length + ' total, for checking)';
+
+  $('selAll').checked = true;
+  updateSelCount();
+  $('results').hidden = false;
+}
+
+function selectedItems(){
+  const out = [];
+  document.querySelectorAll('#list input[type=checkbox]').forEach(function(cb){
+    if (cb.checked) out.push(shown[+cb.dataset.i]);
+  });
+  return out;
+}
+
+function updateSelCount(){
+  const sel = selectedItems();
+  let bytes = 0, unknown = 0;
+  sel.forEach(function(it){ if (it.size) bytes += it.size; else unknown++; });
+  let t = sel.length + ' of ' + shown.length + ' selected';
+  if (bytes) t += ' · about ' + formatSize(bytes) + (unknown ? '+' : '');
+  $('selCount').textContent = t;
+  $('btnDownload').disabled = sel.length === 0 || running;
+}
+
+$('selAll').addEventListener('change', function(){
+  const on = $('selAll').checked;
+  document.querySelectorAll('#list input[type=checkbox]').forEach(function(cb){ cb.checked = on; });
+  updateSelCount();
+});
+
+/* ---------- downloading, one file at a time ---------- */
+
+function setStatus(i, text, cls, linkUrl){
+  const st = $('st-' + i);
+  if (!st) return;
+  st.className = 'status' + (cls ? ' ' + cls : '');
+  st.textContent = '';
+  if (linkUrl){
+    const a = document.createElement('a');
+    a.href = linkUrl; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = text;
+    st.appendChild(a);
+  } else {
+    st.textContent = text;
+  }
+}
+
+function saveBlob(blob, filename){
+  const a = document.createElement('a');
+  const u = URL.createObjectURL(blob);
+  a.href = u; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(u); }, 90000);
+}
+
+async function downloadOne(item, i){
+  setStatus(i, 'Downloading…');
+  try {
+    const resp = await fetch(item.url, { credentials: 'omit' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    let blob;
+    const total = +resp.headers.get('content-length') || item.size || 0;
+    if (resp.body && total){
+      const reader = resp.body.getReader();
+      const chunks = [];
+      let received = 0;
+      while (true){
+        const step = await reader.read();
+        if (step.done) break;
+        chunks.push(step.value);
+        received += step.value.length;
+        setStatus(i, 'Downloading ' + Math.min(99, Math.round(received / total * 100)) + '%');
+        if (cancelRun){ reader.cancel(); throw new Error('__stopped__'); }
+      }
+      blob = new Blob(chunks);
+    } else {
+      blob = await resp.blob();
+    }
+    saveBlob(blob, item.filename);
+    setStatus(i, 'Saved ✓', 'ok');
+    return 'saved';
+  } catch (e) {
+    if (e.message === '__stopped__'){ setStatus(i, 'Stopped', 'warn'); return 'stopped'; }
+    // Most often this is the site not allowing scripts to fetch it (CORS).
+    // Opening the link directly still works — Chrome's own player has a
+    // download button — so hand the user a tap-to-open link instead.
+    setStatus(i, 'Tap to save ↗', 'warn', item.url);
+    return 'manual';
+  }
+}
+
+$('btnDownload').addEventListener('click', async function(){
+  if (running) return;
+  const items = selectedItems();
+  if (!items.length) return;
+  running = true; cancelRun = false;
+  $('btnDownload').disabled = true;
+  $('btnStop').hidden = false;
+  $('overall').hidden = false;
+  ['numToggle', 'ambigToggle', 'gapSel', 'fileInput'].forEach(function(id){ $(id).disabled = true; });
+  const gapMs = (parseInt($('gapSel').value, 10) || 5) * 1000;
+  let done = 0, saved = 0, manual = 0;
+  for (const item of items){
+    if (cancelRun) break;
+    const i = shown.indexOf(item);
+    const result = await downloadOne(item, i);
+    if (result === 'saved') saved++;
+    if (result === 'manual') manual++;
+    done++;
+    $('overallBar').style.width = Math.round(done / items.length * 100) + '%';
+    $('overallText').textContent = done + ' of ' + items.length + ' done';
+    if (cancelRun || done >= items.length) break;
+    $('overallText').textContent = done + ' of ' + items.length + ' done · waiting ' +
+      (gapMs / 1000) + 's before the next one…';
+    await sleep(gapMs);
+  }
+  let finalText = cancelRun ? 'Stopped — ' : 'Finished — ';
+  finalText += saved + ' saved';
+  if (manual) finalText += ', ' + manual + ' need a tap (marked below)';
+  finalText += '.';
+  $('overallText').textContent = finalText;
+  running = false; cancelRun = false;
+  $('btnStop').hidden = true;
+  ['numToggle', 'ambigToggle', 'gapSel', 'fileInput'].forEach(function(id){ $(id).disabled = false; });
+  updateSelCount();
+});
+
+$('btnStop').addEventListener('click', function(){ cancelRun = true; });
+
+/* ---------- link list export ---------- */
+
+$('btnCopy').addEventListener('click', async function(){
+  const text = selectedItems().map(function(it){ return it.url; }).join('\n');
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+  if (!ok){
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+  }
+  $('btnCopy').textContent = ok ? 'Copied ✓' : 'Copy failed';
+  setTimeout(function(){ $('btnCopy').textContent = 'Copy links'; }, 2000);
+});
+
+$('btnList').addEventListener('click', function(){
+  const text = selectedItems().map(function(it){ return it.url; }).join('\n') + '\n';
+  saveBlob(new Blob([text], { type: 'text/plain' }), 'audio-links.txt');
+});
+</script>
+</body>
+</html>

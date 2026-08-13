@@ -1,44 +1,50 @@
-INSTALLING THE TOOLS AS THEIR OWN APPS
+INSTALLING EACH TOOL AS ITS OWN APP
 
-Each tool installs as its own app with its own icon and window.
-The front page installs as an all-in-one launcher. About a minute
-per app, on each device where you want it.
+Each tool is now its own app, with its own icon and its own
+window. About a minute each.
 
-One thing first: icons added to the home screen BEFORE this
-existed only open Chrome. Remove those (press and hold the icon,
-then "Remove") and install fresh.
+READ THIS FIRST — IT IS THE WHOLE REASON THIS DID NOT WORK
+BEFORE: any Utilities icon already on your home screen has to be
+removed before installing. The old one claimed the whole site, so
+Chrome kept saying "you already have this app" instead of
+offering to install a new one. Press and hold each old Utilities
+icon, choose "Remove", and only then continue.
 
 
-1. In Chrome, open the page you want as an app:
+1. In Chrome (not from inside an installed app), open the tool
+you want:
 
-For the converter:
-https://moshgrossman.github.io/Utilities/bulktotxtconverter.html
+The converter:
+https://moshgrossman.github.io/Utilities/converter/
 
-For Audio Finder:
-https://moshgrossman.github.io/Utilities/audio-finder.html
+Audio Finder:
+https://moshgrossman.github.io/Utilities/audio-finder/
 
-For the all-in-one launcher, the front page:
-https://moshgrossman.github.io/Utilities/
+The all-in-one launcher, if you want it too:
+https://moshgrossman.github.io/Utilities/home/
 
 
 2. Tap Chrome's three-dot menu, then "Install app". On some
-versions it says "Add to Home screen" — same thing, tap it.
+versions it says "Add to Home screen" — same thing.
+
+If the menu does not offer it, you are probably looking at the
+page inside an app window rather than in Chrome itself. Open the
+address above in a normal Chrome tab and try again.
 
 
 3. Tap "Install" (or "Add").
 
 
-4. Find the new icon on your home screen: a yellow page for the
-converter, teal headphones for Audio Finder, a yellow U for the
-launcher. Tap it — the tool opens in its own window, no address
-bar, with its own entry in recent apps. In DeX it gets its own
+4. Check the home screen. You should see a separate icon: a
+yellow page for the converter, teal headphones for Audio Finder,
+a yellow U for the launcher. Tap it — that tool opens in its own
+window, with its own entry in recent apps. In DeX it gets its own
 desktop-style window.
 
 
-5. Repeat from step 1 for the next tool you want.
+5. Repeat from step 1 for the next tool.
 
 
-IF "INSTALL APP" DOES NOT APPEAR IN THE MENU: Chrome sometimes
-needs a moment to notice a page became installable. Close the
-tab, reopen the page, wait a few seconds, and check the menu
-again.
+THE OLD ADDRESSES STILL WORK. If you have the previous links
+saved anywhere, they now forward to the new ones automatically —
+nothing you bookmarked is broken.

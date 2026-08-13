@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="../icons/icon-converter-192.png">
+<title>EPUB / PDF / MOBI / CSV → TXT Bulk Converter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --border: #2e2e2e;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #e8e8e8;
+    --muted: #666;
+    --success: #47ff8a;
+    --error: #ff4747;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 32px 20px;
+  }
+
+  .container { max-width: 680px; margin: 0 auto; }
+
+  header {
+    margin-bottom: 40px;
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+  }
+
+  h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 4px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: #1f1f1f;
+  }
+
+  .drop-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+
+  .drop-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  .drop-label span { color: var(--accent); font-weight: 600; }
+
+  .file-list { margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+
+  .file-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    transition: border-color 0.2s;
+  }
+
+  .file-item.done { border-color: var(--success); }
+  .file-item.error { border-color: var(--error); }
+  .file-item.processing { border-color: var(--accent2); }
+
+  .file-name {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70%;
+  }
+
+  .file-status { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+  .file-item.done .file-status { color: var(--success); }
+  .file-item.error .file-status { color: var(--error); }
+  .file-item.processing .file-status { color: var(--accent2); }
+  .file-item .file-status { color: var(--muted); }
+
+  .options {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .option-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .option-label input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; }
+
+  .actions {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary { background: var(--accent); color: #0f0f0f; }
+  .btn-primary:hover { background: #d4eb30; transform: translateY(-1px); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--muted); color: var(--text); }
+
+  .btn-download { background: var(--success); color: #0f0f0f; }
+  .btn-download:hover { background: #30eb72; transform: translateY(-1px); }
+  .btn-download:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  .progress-bar {
+    margin-top: 16px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+  }
+
+  .progress-bar.visible { display: block; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+  .stats {
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .stats span { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>EPUB / PDF / MOBI / CSV → TXT</h1>
+    <div class="subtitle">// v3.4 · bulk converter · runs locally in browser · nothing uploaded</div>
+  </header>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept="application/epub+zip,application/pdf,application/x-mobipocket-ebook,text/plain,text/csv,.epub,.pdf,.mobi,.txt,.csv" multiple>
+    <span class="drop-icon">📚</span>
+    <div class="drop-label">Drop <span>.epub, .pdf, .mobi, .csv, .txt files</span> here, or tap to browse</div>
+  </div>
+
+  <div class="options">
+    <label class="option-label">
+      <input type="checkbox" id="chapterBreaks" checked>
+      Chapter break markers
+    </label>
+    <label class="option-label">
+      <input type="checkbox" id="cleanWhitespace" checked>
+      Clean extra whitespace
+    </label>
+    <label class="option-label">
+      <input type="checkbox" id="keepTitles" checked>
+      Keep headings
+    </label>
+  </div>
+
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="stats" id="stats" style="display:none">
+    Files: <span id="statTotal">0</span>  |
+    Done: <span id="statDone">0</span>  |
+    Errors: <span id="statErrors">0</span>
+  </div>
+
+  <div class="file-list" id="fileList"></div>
+
+  <div class="actions" id="actions" style="display:none">
+    <button class="btn-primary" id="convertBtn">Convert All</button>
+    <button class="btn-download" id="downloadBtn" disabled>Download</button>
+    <button class="btn-secondary" id="clearBtn">Clear</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const fileList = document.getElementById('fileList');
+  const actions = document.getElementById('actions');
+  const convertBtn = document.getElementById('convertBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+  const statsEl = document.getElementById('stats');
+
+  let files = [];
+  let results = {};
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    addFiles([...e.dataTransfer.files].filter(f => /\.(epub|pdf|mobi|txt|csv)$/i.test(f.name)));
+  });
+
+  fileInput.addEventListener('change', () => {
+    addFiles([...fileInput.files].filter(f => /\.(epub|pdf|mobi|txt|csv)$/i.test(f.name)));
+    fileInput.value = '';
+  });
+
+  function addFiles(newFiles) {
+    newFiles.forEach(f => {
+      if (!files.find(x => x.name === f.name)) files.push(f);
+    });
+    renderList();
+  }
+
+  function renderList() {
+    fileList.innerHTML = '';
+    if (files.length === 0) { actions.style.display = 'none'; statsEl.style.display = 'none'; return; }
+    actions.style.display = 'flex';
+
+    files.forEach((f, i) => {
+      const r = results[f.name];
+      const item = document.createElement('div');
+      item.className = 'file-item' + (r ? (r.ok ? ' done' : ' error') : '');
+      item.id = 'file-' + i;
+      const status = r ? (r.ok ? '✓ DONE' : '✗ ERROR') : 'QUEUED';
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'file-name';
+      nameDiv.textContent = f.name; // textContent: a filename must never render as HTML
+      const statusDiv = document.createElement('div');
+      statusDiv.className = 'file-status';
+      statusDiv.textContent = status;
+      item.append(nameDiv, statusDiv);
+      fileList.appendChild(item);
+    });
+
+    updateStats();
+  }
+
+  function updateStats() {
+    const done = Object.values(results).filter(r => r.ok).length;
+    const errors = Object.values(results).filter(r => !r.ok).length;
+    statsEl.style.display = 'flex';
+    document.getElementById('statTotal').textContent = files.length;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statErrors').textContent = errors;
+  }
+
+  // ── Split helpers ──────────────────────────────────────────────
+  const SPLIT_BYTES = 300 * 1024; // ~300 KB per part
+
+  function splitText(text) {
+    const enc = new TextEncoder();
+    const parts = [];
+    let start = 0;
+    while (start < text.length) {
+      // Find a split point near SPLIT_BYTES
+      let end = start;
+      let bytes = 0;
+      while (end < text.length && bytes < SPLIT_BYTES) {
+        const charBytes = enc.encode(text[end]).length;
+        bytes += charBytes;
+        end++;
+      }
+      // Try to break at a paragraph boundary
+      if (end < text.length) {
+        const boundary = text.lastIndexOf('\n\n', end);
+        if (boundary > start) end = boundary + 2;
+      }
+      parts.push(text.slice(start, end));
+      start = end;
+    }
+    return parts;
+  }
+
+  // ── EPUB extraction ────────────────────────────────────────────
+  async function extractEpub(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    let opfPath = '';
+    const container = zip.file('META-INF/container.xml');
+    if (container) {
+      const containerXml = await container.async('text');
+      const match = containerXml.match(/full-path="([^"]+\.opf)"/i);
+      if (match) opfPath = match[1];
+    }
+
+    let spineItems = [];
+    const opfBase = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : '';
+
+    if (opfPath) {
+      const opfFile = zip.file(opfPath);
+      if (opfFile) {
+        const opfXml = await opfFile.async('text');
+        const parser = new DOMParser();
+        const opfDoc = parser.parseFromString(opfXml, 'text/xml');
+        const manifestItems = {};
+        opfDoc.querySelectorAll('manifest item').forEach(item => {
+          manifestItems[item.getAttribute('id')] = item.getAttribute('href');
+        });
+        opfDoc.querySelectorAll('spine itemref').forEach(ref => {
+          const idref = ref.getAttribute('idref');
+          if (manifestItems[idref]) spineItems.push(opfBase + manifestItems[idref]);
+        });
+      }
+    }
+
+    if (spineItems.length === 0) {
+      zip.forEach((path) => {
+        if (path.match(/\.(html|xhtml|htm)$/i)) spineItems.push(path);
+      });
+    }
+
+    const chapterBreaks = document.getElementById('chapterBreaks').checked;
+    const cleanWS = document.getElementById('cleanWhitespace').checked;
+    const keepTitles = document.getElementById('keepTitles').checked;
+
+    let fullText = '';
+
+    for (let i = 0; i < spineItems.length; i++) {
+      const path = spineItems[i];
+      const f2 = zip.file(path) || zip.file(decodeURIComponent(path));
+      if (!f2) continue;
+
+      const html = await f2.async('text');
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      doc.querySelectorAll('script, style, nav').forEach(el => el.remove());
+
+      if (keepTitles) {
+        doc.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+          h.textContent = '\n\n' + h.textContent.trim().toUpperCase() + '\n';
+        });
+      }
+
+      let chapterText = doc.body ? (doc.body.innerText || doc.body.textContent || '') : '';
+
+      if (cleanWS) {
+        chapterText = chapterText.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim();
+      }
+
+      if (chapterText.trim()) {
+        if (chapterBreaks && i > 0) fullText += '\n\n---\n\n';
+        fullText += chapterText + '\n';
+      }
+    }
+
+    return fullText.trim();
+  }
+
+  // ── PDF extraction (embedded text only, no OCR) ────────────────
+  async function extractPdf(file) {
+    if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const cleanWS = document.getElementById('cleanWhitespace').checked;
+    const chapterBreaks = document.getElementById('chapterBreaks').checked;
+
+    let fullText = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      let pageText = content.items.map(item => item.str).join(' ');
+      if (cleanWS) pageText = pageText.replace(/[ \t]+/g, ' ').trim();
+      if (pageText.trim()) {
+        if (chapterBreaks && p > 1) fullText += '\n\n---\n\n';
+        fullText += pageText + '\n';
+      }
+    }
+    if (cleanWS) fullText = fullText.replace(/\n{3,}/g, '\n\n');
+    return fullText.trim();
+  }
+
+  // ── MOBI extraction ────────────────────────────────────────────
+  async function extractMobi(file) {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const dec = new TextDecoder('utf-8', { fatal: false });
+
+    // PDB: number of records at offset 76
+    const nRec = (bytes[76] << 8) | bytes[77];
+    // Record list starts right after the 78-byte PDB header;
+    // each entry is 8 bytes (4 data offset + 1 attributes + 3 unique ID)
+    const PDB_HEADER = 78;
+    const recOffsets = [];
+    for (let i = 0; i < nRec; i++) {
+      const off = PDB_HEADER + i * 8;
+      const recOff = (bytes[off] << 24) | (bytes[off+1] << 16) | (bytes[off+2] << 8) | bytes[off+3];
+      recOffsets.push(recOff);
+    }
+    recOffsets.push(bytes.length); // sentinel
+
+    // MOBI header is in record 0. Find number of text records.
+    const rec0Start = recOffsets[0];
+    const palmDocTextRecords = (bytes[rec0Start + 8] << 8) | bytes[rec0Start + 9];
+    const compType = (bytes[rec0Start + 0] << 8) | bytes[rec0Start + 1];
+
+    // Decompress text records (records 1..palmDocTextRecords)
+    let rawText = '';
+    for (let r = 1; r <= palmDocTextRecords; r++) {
+      const start = recOffsets[r];
+      const end = recOffsets[r + 1];
+      if (start >= bytes.length) break;
+      const rec = bytes.slice(start, end);
+      let decoded;
+      if (compType === 2) {
+        decoded = palmdocDecompress(rec);
+      } else {
+        decoded = rec;
+      }
+      rawText += dec.decode(decoded);
+    }
+
+    // Strip HTML tags if present
+    const hasHtml = rawText.includes('<html') || rawText.includes('<HTML') || rawText.includes('<body');
+    let text;
+    if (hasHtml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawText, 'text/html');
+      doc.querySelectorAll('script,style,nav').forEach(el => el.remove());
+      const keepTitles = document.getElementById('keepTitles').checked;
+      if (keepTitles) {
+        doc.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+          h.textContent = '\n\n' + h.textContent.trim().toUpperCase() + '\n';
+        });
+      }
+      text = doc.body ? (doc.body.innerText || doc.body.textContent || '') : rawText;
+    } else {
+      text = rawText;
+    }
+
+    const cleanWS = document.getElementById('cleanWhitespace').checked;
+    if (cleanWS) text = text.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim();
+    return text.trim();
+  }
+
+  function palmdocDecompress(data) {
+    const out = [];
+    let i = 0;
+    while (i < data.length) {
+      const c = data[i++];
+      if (c === 0) {
+        out.push(0);
+      } else if (c <= 8) {
+        for (let j = 0; j < c; j++) out.push(data[i++]);
+      } else if (c <= 0x7f) {
+        out.push(c);
+      } else if (c <= 0xbf) {
+        const next = data[i++];
+        const dist = ((c & 0x3f) << 2) | (next >> 6);
+        const len = (next & 0x3f) + 3;
+        const pos = out.length - dist;
+        for (let j = 0; j < len; j++) out.push(out[pos + j] || 0);
+      } else {
+        out.push(0x20);
+        out.push(c ^ 0x80);
+      }
+    }
+    return new Uint8Array(out);
+  }
+
+  // ── CSV extraction ─────────────────────────────────────────────
+  // Turns a spreadsheet export into text that reads on a small screen:
+  // each row becomes a block of "Column name: value" lines.
+  function detectDelimiter(text) {
+    // Pick the delimiter that gives the most CONSISTENT column count
+    // across sample rows, not the most occurrences — values themselves
+    // can contain commas (e.g. French decimals like 850,50 inside a
+    // semicolon-delimited Excel export).
+    const sample = text.slice(0, 65536);
+    const truncated = text.length > sample.length;
+    let best = ',', bestScore = 0, bestCols = 1;
+    for (const d of [',', ';', '\t']) {
+      let rows = parseCsv(sample, d).filter(r => r.length > 1 || (r[0] && r[0].trim() !== ''));
+      if (truncated && rows.length > 1) rows = rows.slice(0, -1); // last sample row may be cut mid-line
+      rows = rows.slice(0, 20);
+      if (rows.length === 0) continue;
+      const counts = {};
+      rows.forEach(r => { counts[r.length] = (counts[r.length] || 0) + 1; });
+      let mode = 1, modeN = 0;
+      for (const k in counts) if (counts[k] > modeN) { modeN = counts[k]; mode = +k; }
+      if (mode < 2) continue;
+      const score = modeN / rows.length;
+      if (score > bestScore || (score === bestScore && mode > bestCols)) {
+        best = d; bestScore = score; bestCols = mode;
+      }
+    }
+    return best;
+  }
+
+  function parseCsv(text, delim) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += ch;
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delim) {
+        row.push(field); field = '';
+      } else if (ch === '\n') {
+        row.push(field); rows.push(row); row = []; field = '';
+      } else if (ch === '\r') {
+        if (text[i + 1] !== '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      } else {
+        field += ch;
+      }
+    }
+    if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  async function extractCsv(file) {
+    let raw = await file.text();
+    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1); // strip BOM (Excel adds one)
+    const delim = detectDelimiter(raw);
+    const cleanWS = document.getElementById('cleanWhitespace').checked;
+
+    const tidy = v => {
+      v = v.replace(/\r?\n/g, ' / ').trim(); // multi-line cells → one line
+      if (cleanWS) v = v.replace(/[ \t]+/g, ' ');
+      return v;
+    };
+
+    let rows = parseCsv(raw, delim).map(r => r.map(tidy));
+    rows = rows.filter(r => r.some(v => v !== '')); // drop fully blank rows
+    if (rows.length === 0) throw new Error('Empty CSV');
+
+    const headers = rows[0].map((h, i) => h || ('Column ' + (i + 1)));
+    const dataRows = rows.slice(1);
+    const baseName = file.name.replace(/\.csv$/i, '');
+
+    let out = baseName.toUpperCase() + '\n' +
+              dataRows.length + (dataRows.length === 1 ? ' row, ' : ' rows, ') +
+              headers.length + (headers.length === 1 ? ' column' : ' columns') + '\n';
+
+    if (headers.length === 1) {
+      // Single-column file: just a plain list, no labels needed
+      out += '\n' + headers[0] + '\n\n';
+      out += dataRows.map(r => r[0]).join('\n');
+      return out.trim();
+    }
+
+    if (dataRows.length === 0) {
+      out += '\nColumns: ' + headers.join(', ') + '\n';
+      return out.trim();
+    }
+
+    dataRows.forEach((r, i) => {
+      out += '\n--- Row ' + (i + 1) + ' ---\n';
+      const n = Math.max(headers.length, r.length);
+      for (let c = 0; c < n; c++) {
+        const v = r[c];
+        if (v === undefined || v === '') continue; // skip blank cells
+        const h = headers[c] || ('Column ' + (c + 1));
+        out += h + ': ' + v + '\n';
+      }
+    });
+
+    return out.trim();
+  }
+
+  // ── TXT passthrough (just read as-is for splitting) ────────────
+  async function extractTxt(file) {
+    return await file.text();
+  }
+
+  // ── Dispatcher ─────────────────────────────────────────────────
+  async function extractText(file) {
+    if (/\.epub$/i.test(file.name)) return extractEpub(file);
+    if (/\.pdf$/i.test(file.name))  return extractPdf(file);
+    if (/\.mobi$/i.test(file.name)) return extractMobi(file);
+    if (/\.csv$/i.test(file.name))  return extractCsv(file);
+    if (/\.txt$/i.test(file.name))  return extractTxt(file);
+    throw new Error('Unsupported file type');
+  }
+
+  convertBtn.addEventListener('click', async () => {
+    convertBtn.disabled = true;
+    downloadBtn.disabled = true;
+    progressBar.classList.add('visible');
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (results[f.name]?.ok) continue;
+
+      const item = document.getElementById('file-' + i);
+      if (item) { item.className = 'file-item processing'; item.querySelector('.file-status').textContent = 'WORKING...'; }
+
+      try {
+        const text = await extractText(f);
+        if (!text || !text.trim()) throw new Error('No text found in file');
+        results[f.name] = { ok: true, text };
+        if (item) { item.className = 'file-item done'; item.querySelector('.file-status').textContent = '✓ DONE'; }
+      } catch(e) {
+        results[f.name] = { ok: false, error: e.message };
+        if (item) { item.className = 'file-item error'; item.querySelector('.file-status').textContent = '✗ ERROR'; }
+      }
+
+      progressFill.style.width = ((i + 1) / files.length * 100) + '%';
+      updateStats();
+    }
+
+    convertBtn.disabled = false;
+    const hasDone = Object.values(results).some(r => r.ok);
+    downloadBtn.disabled = !hasDone;
+    updateDownloadLabel();
+  });
+
+  function updateDownloadLabel() {
+    // Count total output files (accounting for splits)
+    let totalOutputFiles = 0;
+    Object.entries(results).forEach(([name, r]) => {
+      if (!r.ok) return;
+      const parts = splitText(r.text);
+      totalOutputFiles += parts.length;
+    });
+    downloadBtn.textContent = totalOutputFiles > 2
+      ? 'Download All as ZIP'
+      : totalOutputFiles === 1 ? 'Download TXT' : 'Download Files';
+  }
+
+  downloadBtn.addEventListener('click', async () => {
+    // Collect all output file entries
+    const outputFiles = [];
+    Object.entries(results).forEach(([name, r]) => {
+      if (!r.ok) return;
+      const baseName = name.replace(/\.(epub|pdf|mobi|csv|txt)$/i, '');
+      const parts = splitText(r.text);
+      if (parts.length === 1) {
+        outputFiles.push({ name: baseName + '.txt', text: parts[0] });
+      } else {
+        parts.forEach((part, idx) => {
+          outputFiles.push({ name: `${baseName}_part${idx + 1}.txt`, text: part });
+        });
+      }
+    });
+
+    if (outputFiles.length === 0) return;
+
+    if (outputFiles.length <= 2) {
+      // Download individually without zip
+      for (const f of outputFiles) {
+        const blob = new Blob([f.text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = f.name;
+        a.click();
+        await new Promise(r => setTimeout(r, 200)); // slight delay between triggers
+      }
+    } else {
+      // 3+ files → zip
+      const zip = new JSZip();
+      outputFiles.forEach(f => zip.file(f.name, f.text));
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      // Single source book → name zip after the book; multiple books → use date
+      const sourceBooks = Object.entries(results).filter(([,r]) => r.ok);
+      let zipName;
+      if (sourceBooks.length === 1) {
+        const baseName = sourceBooks[0][0].replace(/\.(epub|pdf|mobi|csv|txt)$/i, '');
+        zipName = baseName + '.zip';
+      } else {
+        const d = new Date();
+        const stamp = d.getFullYear() + '-' +
+          String(d.getMonth()+1).padStart(2,'0') + '-' +
+          String(d.getDate()).padStart(2,'0');
+        zipName = 'converted_' + stamp + '.zip';
+      }
+      a.download = zipName;
+      a.click();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    files = []; results = {};
+    fileList.innerHTML = '';
+    actions.style.display = 'none';
+    statsEl.style.display = 'none';
+    progressBar.classList.remove('visible');
+    progressFill.style.width = '0%';
+    downloadBtn.disabled = true;
+    downloadBtn.textContent = 'Download';
+  });
+</script>
+</body>
+</html>
