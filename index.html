@@ -3,126 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0f0f0f">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon-192.png">
+<meta http-equiv="refresh" content="0; url=home/">
 <title>Utilities</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-
-  :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --border: #2e2e2e;
-    --accent: #e8ff47;
-    --accent2: #47ffe8;
-    --text: #e8e8e8;
-    --muted: #666;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
-    min-height: 100vh;
-    padding: 32px 20px;
-  }
-
-  .container { max-width: 680px; margin: 0 auto; }
-
-  header {
-    margin-bottom: 40px;
-    border-left: 3px solid var(--accent);
-    padding-left: 16px;
-  }
-
-  h1 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: -0.5px;
-  }
-
-  .subtitle {
-    font-size: 0.82rem;
-    color: var(--muted);
-    margin-top: 4px;
-    font-family: 'IBM Plex Mono', monospace;
-  }
-
-  .tool-list { display: flex; flex-direction: column; gap: 16px; }
-
-  .tool-card {
-    display: block;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 20px;
-    text-decoration: none;
-    color: var(--text);
-    transition: border-color 0.15s;
-  }
-
-  .tool-card:active, .tool-card:hover { border-color: var(--accent); }
-
-  .tool-name {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-
-  .tool-desc {
-    font-size: 0.88rem;
-    color: var(--text);
-    line-height: 1.5;
-  }
-
-  .tool-meta {
-    margin-top: 10px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-  }
-
-  footer {
-    margin-top: 40px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-  }
+  body { background:#0f0f0f; color:#666; font-family:system-ui,sans-serif;
+         padding:40px 20px; text-align:center; }
+  a { color:#e8ff47; }
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>Utilities</h1>
-    <div class="subtitle">// v1.2 · every tool runs locally in your browser · nothing uploaded</div>
-  </header>
-
-  <div class="tool-list">
-    <a class="tool-card" href="bulktotxtconverter.html">
-      <div class="tool-name">📚 Bulk → TXT Converter</div>
-      <div class="tool-desc">Turns EPUB, PDF, MOBI and CSV files into plain .txt,
-        split into ~300 KB parts that open anywhere. CSVs come out as labeled,
-        readable blocks — one per spreadsheet row.</div>
-      <div class="tool-meta">v3.3 · installable as its own app</div>
-    </a>
-
-    <a class="tool-card" href="audio-finder.html">
-      <div class="tool-name">🎧 Audio Finder</div>
-      <div class="tool-desc">Finds audio links inside a Chrome network log
-        (chrome://net-export) and saves them to your Downloads folder,
-        one at a time.</div>
-      <div class="tool-meta">v1.1 · installable as its own app</div>
-    </a>
-  </div>
-
-  <footer>tools live in github.com/moshgrossman/Utilities</footer>
-</div>
+<p>Taking you to <a href="home/">Utilities</a>&hellip;</p>
+<script>location.replace('home/');</script>
 </body>
 </html>

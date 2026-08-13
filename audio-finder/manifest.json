@@ -1,0 +1,16 @@
+{
+  "id": "/Utilities/audio-finder/",
+  "name": "Audio Finder",
+  "short_name": "Audio Finder",
+  "description": "Finds audio links inside a Chrome network log and saves them, one at a time.",
+  "start_url": "/Utilities/audio-finder/",
+  "scope": "/Utilities/audio-finder/",
+  "display": "standalone",
+  "background_color": "#14181c",
+  "theme_color": "#14181c",
+  "icons": [
+    { "src": "/Utilities/icons/icon-audio-finder-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/Utilities/icons/icon-audio-finder-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/Utilities/icons/icon-audio-finder-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

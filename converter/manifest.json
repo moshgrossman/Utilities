@@ -1,0 +1,16 @@
+{
+  "id": "/Utilities/converter/",
+  "name": "TXT Converter",
+  "short_name": "Converter",
+  "description": "EPUB / PDF / MOBI / CSV → plain .txt, entirely in the browser.",
+  "start_url": "/Utilities/converter/",
+  "scope": "/Utilities/converter/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "icons": [
+    { "src": "/Utilities/icons/icon-converter-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/Utilities/icons/icon-converter-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/Utilities/icons/icon-converter-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
