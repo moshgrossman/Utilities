@@ -71,7 +71,6 @@
   .meta{display:block; color:var(--muted); font-size:.85rem; margin-top:2px}
   .url{display:block; color:var(--muted); font-size:.78rem; margin-top:4px;
        word-break:break-all}
-  .numnote{color:var(--warn)}
   .status{flex:none; font-size:.85rem; font-weight:700; padding:6px 10px;
        border-radius:999px; background:var(--chip); align-self:center; white-space:nowrap}
   .status.ok{color:var(--ok)} .status.bad{color:var(--bad)} .status.warn{color:var(--warn)}
@@ -109,8 +108,7 @@
     <p id="hlsHint" class="note warnnote" hidden></p>
 
     <label class="toggle"><input type="checkbox" id="numToggle" checked>
-      Number the files (01-, 02-) so they sort correctly — links that carry
-      their own number keep it</label>
+      Number the files in order (01-, 02-) so they sort correctly</label>
 
     <label class="toggle"><input type="checkbox" id="ambigToggle">
       Also show .mp4 / .webm files (these can be video)</label>
@@ -156,7 +154,7 @@
 <script>
 'use strict';
 
-const APP_VERSION = '1.2';   // moves together with version.json at the repo root
+const APP_VERSION = '1.3';   // moves together with version.json at the repo root
 document.getElementById('verLine').textContent = 'Audio Finder v' + APP_VERSION + ' · ';
 
 /* ---------- finding audio links in the log ---------- */
@@ -310,42 +308,6 @@ function filenameFor(item, idx){
   return name;
 }
 
-// Numbers a link carries in its own file name (extension dropped).
-// Numbers longer than 4 digits are ignored — those are ids or
-// timestamps, not an order.
-function numbersInName(url){
-  let name = '';
-  try {
-    const parts = new URL(url).pathname.split('/').filter(Boolean);
-    name = decodeURIComponent(parts.pop() || '');
-  } catch (e) {}
-  name = name.replace(/\.[a-z0-9]{1,5}$/i, '');
-  const out = [];
-  const re = /\d+/g;
-  let m;
-  while ((m = re.exec(name))) if (m[0].length <= 4) out.push(parseInt(m[0], 10));
-  return out;
-}
-
-// The order number each link carries, per the rule: counting from the END
-// of the name, use the first position whose value actually differs between
-// files — so years and "part N of 12" totals, which repeat, are skipped.
-// Returns one number per item, null where the link has none.
-function linkOrderNumbers(items){
-  const lists = items.map(function(it){ return numbersInName(it.url); });
-  const maxLen = lists.reduce(function(a, l){ return Math.max(a, l.length); }, 0);
-  let pick = 1;
-  for (let k = 1; k <= maxLen; k++){
-    const vals = [];
-    lists.forEach(function(l){ if (l.length >= k) vals.push(l[l.length - k]); });
-    if (vals.length && vals.some(function(v){ return v !== vals[0]; })){ pick = k; break; }
-  }
-  return lists.map(function(l){
-    if (!l.length) return null;
-    return l.length >= pick ? l[l.length - pick] : l[l.length - 1];
-  });
-}
-
 function formatSize(n){
   if (!n) return '';
   if (n < 1024) return n + ' B';
@@ -392,37 +354,12 @@ function renderResults(){
   const ambig = withAmbig ? scan.all.filter(function(it){ return !isAudio(it) && isAmbiguous(it); }) : [];
   shown = audio.concat(ambig);
   const numbered = $('numToggle').checked;
-  shown.forEach(function(it){ it.status = null; it.numNote = null; });
-  if (numbered && shown.length){
-    // Links that carry their own number keep it; the rest fill the unused
-    // positions in the order they appeared in the log. A number two links
-    // both claim goes to the first — the second gets a spare position and
-    // says so on its row.
-    const own = linkOrderNumbers(shown);
-    const finalNum = new Array(shown.length).fill(null);
-    const taken = {};
-    own.forEach(function(n, i){
-      if (n === null) return;
-      if (taken[n] === undefined){ taken[n] = i; finalNum[i] = n; }
-    });
-    let next = 1;
-    own.forEach(function(n, i){
-      if (finalNum[i] !== null) return;
-      while (taken[next] !== undefined) next++;
-      taken[next] = i; finalNum[i] = next;
-      if (n !== null){
-        shown[i].numNote = 'link says ' + n + ' but another file already has it — this one saved as ' + next;
-      }
-      next++;
-    });
-    const biggest = finalNum.reduce(function(a, b){ return Math.max(a, b); }, 0);
-    const width = Math.max(2, String(biggest).length);
-    shown.forEach(function(it, i){
-      it.filename = String(finalNum[i]).padStart(width, '0') + '-' + filenameFor(it, i);
-    });
-  } else {
-    shown.forEach(function(it, i){ it.filename = filenameFor(it, i); });
-  }
+  const width = Math.max(2, String(shown.length).length);
+  shown.forEach(function(it, i){
+    const base = filenameFor(it, i);
+    it.filename = numbered ? String(i + 1).padStart(width, '0') + '-' + base : base;
+    it.status = null;
+  });
 
   let line = 'Looked through ' + scan.eventCount.toLocaleString() + ' log entries and found ' +
              audio.length + ' audio file' + (audio.length === 1 ? '' : 's') + '.';
@@ -454,14 +391,7 @@ function renderResults(){
     meta.textContent = [formatSize(it.size), it.contentType].filter(Boolean).join(' · ') || 'size unknown';
     const url = document.createElement('span');
     url.className = 'url'; url.textContent = it.url;
-    body.appendChild(fname); body.appendChild(meta);
-    if (it.numNote){
-      const nn = document.createElement('span');
-      nn.className = 'meta numnote';
-      nn.textContent = '⚠ ' + it.numNote;
-      body.appendChild(nn);
-    }
-    body.appendChild(url);
+    body.appendChild(fname); body.appendChild(meta); body.appendChild(url);
     const st = document.createElement('span');
     st.className = 'status'; st.id = 'st-' + i; st.textContent = '';
     li.appendChild(cb); li.appendChild(body); li.appendChild(st);
