@@ -136,6 +136,7 @@
     <div class="selrow">
       <label><input type="checkbox" id="selAll" checked> Select all</label>
       <span id="selCount"></span>
+      <button id="btnLengths" class="small">Get lengths</button>
       <button id="btnCopy" class="small">Copy links</button>
       <button id="btnList" class="small">Save link list</button>
     </div>
@@ -154,7 +155,7 @@
 <script>
 'use strict';
 
-const APP_VERSION = '1.3';   // moves together with version.json at the repo root
+const APP_VERSION = '1.4';   // moves together with version.json at the repo root
 document.getElementById('verLine').textContent = 'Audio Finder v' + APP_VERSION + ' · ';
 
 /* ---------- finding audio links in the log ---------- */
@@ -316,6 +317,54 @@ function formatSize(n){
   return (n / 1073741824).toFixed(2) + ' GB';
 }
 
+function formatDuration(s){
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0')
+           : m + ':' + String(sec).padStart(2, '0');
+}
+
+function metaTextFor(it){
+  const bits = [];
+  if (it.duration) bits.push(formatDuration(it.duration));
+  const sz = formatSize(it.size);
+  if (sz) bits.push(sz);
+  if (it.contentType) bits.push(it.contentType);
+  return bits.join(' · ') || 'size unknown';
+}
+
+function refreshMeta(i){
+  const el = $('meta-' + i);
+  if (el) el.textContent = metaTextFor(shown[i]);
+}
+
+// The length a file states about itself, read through the browser's own
+// media handling. Anything the browser can't pin down — a live stream, a
+// truncated file — comes back null, and null shows nothing at all rather
+// than a number worked out from the file size.
+function readDuration(src){
+  return new Promise(function(resolve){
+    const a = new Audio();
+    a.preload = 'metadata';
+    let settled = false, timer = null;
+    function finish(v){
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      a.removeAttribute('src');   // stop the transfer as soon as we know
+      try { a.load(); } catch (e) {}
+      resolve(v);
+    }
+    a.addEventListener('loadedmetadata', function(){
+      const d = a.duration;
+      finish(isFinite(d) && d > 0 ? d : null);
+    });
+    a.addEventListener('error', function(){ finish(null); });
+    timer = setTimeout(function(){ finish(null); }, 15000);
+    a.src = src;
+  });
+}
+
 function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
 /* ---------- page state & rendering ---------- */
@@ -387,8 +436,8 @@ function renderResults(){
     const fname = document.createElement('span');
     fname.className = 'fname'; fname.textContent = it.filename;
     const meta = document.createElement('span');
-    meta.className = 'meta';
-    meta.textContent = [formatSize(it.size), it.contentType].filter(Boolean).join(' · ') || 'size unknown';
+    meta.className = 'meta'; meta.id = 'meta-' + i;
+    meta.textContent = metaTextFor(it);
     const url = document.createElement('span');
     url.className = 'url'; url.textContent = it.url;
     body.appendChild(fname); body.appendChild(meta); body.appendChild(url);
@@ -433,6 +482,11 @@ function updateSelCount(){
   sel.forEach(function(it){ if (it.size) bytes += it.size; else unknown++; });
   let t = sel.length + ' of ' + shown.length + ' selected';
   if (bytes) t += ' · about ' + formatSize(bytes) + (unknown ? '+' : '');
+  // Only total the time when every selected file has a real length — a
+  // partial sum would be a guess, and guesses are exactly what we don't show.
+  if (sel.length && sel.every(function(it){ return it.duration; })){
+    t += ' · ' + formatDuration(sel.reduce(function(a, it){ return a + it.duration; }, 0)) + ' total';
+  }
   $('selCount').textContent = t;
   $('btnDownload').disabled = sel.length === 0 || running;
 }
@@ -494,6 +548,13 @@ async function downloadOne(item, i){
       blob = await resp.blob();
     }
     saveBlob(blob, item.filename);
+    // The file is already here, so its length costs nothing more to read.
+    if (!item.duration){
+      const u = URL.createObjectURL(blob);
+      const d = await readDuration(u);
+      URL.revokeObjectURL(u);
+      if (d){ item.duration = d; refreshMeta(i); updateSelCount(); }
+    }
     setStatus(i, 'Saved ✓', 'ok');
     return 'saved';
   } catch (e) {
@@ -514,7 +575,7 @@ $('btnDownload').addEventListener('click', async function(){
   $('btnDownload').disabled = true;
   $('btnStop').hidden = false;
   $('overall').hidden = false;
-  ['numToggle', 'ambigToggle', 'gapSel', 'fileInput'].forEach(function(id){ $(id).disabled = true; });
+  ['numToggle', 'ambigToggle', 'gapSel', 'fileInput', 'btnLengths'].forEach(function(id){ $(id).disabled = true; });
   const gapMs = (parseInt($('gapSel').value, 10) || 5) * 1000;
   let done = 0, saved = 0, manual = 0;
   for (const item of items){
@@ -538,11 +599,54 @@ $('btnDownload').addEventListener('click', async function(){
   $('overallText').textContent = finalText;
   running = false; cancelRun = false;
   $('btnStop').hidden = true;
-  ['numToggle', 'ambigToggle', 'gapSel', 'fileInput'].forEach(function(id){ $(id).disabled = false; });
+  ['numToggle', 'ambigToggle', 'gapSel', 'fileInput', 'btnLengths'].forEach(function(id){ $(id).disabled = false; });
   updateSelCount();
 });
 
 $('btnStop').addEventListener('click', function(){ cancelRun = true; });
+
+/* ---------- reading how long each audio is ---------- */
+
+let lengthsRunning = false, cancelLengths = false;
+
+function setLengthsIdle(){
+  lengthsRunning = false; cancelLengths = false;
+  $('btnLengths').textContent = 'Get lengths';
+  $('btnLengths').disabled = running;
+}
+
+$('btnLengths').addEventListener('click', async function(){
+  if (lengthsRunning){ cancelLengths = true; return; }   // second tap stops it
+  const todo = selectedItems().filter(function(it){ return !it.duration; });
+  if (!todo.length){
+    $('btnLengths').textContent = 'All known ✓';
+    setTimeout(setLengthsIdle, 1500);
+    return;
+  }
+  lengthsRunning = true; cancelLengths = false;
+  let done = 0, found = 0;
+  // Three at a time: quick enough on a long list, gentle enough that the
+  // site isn't hit with everything at once.
+  const queue = todo.slice();
+  async function worker(){
+    while (queue.length && !cancelLengths){
+      const it = queue.shift();
+      const d = await readDuration(it.url);
+      if (d){ it.duration = d; found++; }
+      done++;
+      const i = shown.indexOf(it);
+      if (i >= 0) refreshMeta(i);
+      $('btnLengths').textContent = 'Reading ' + done + '/' + todo.length + ' · tap to stop';
+      updateSelCount();
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  const missed = done - found;
+  $('btnLengths').textContent = cancelLengths ? 'Stopped'
+    : missed ? found + ' found, ' + missed + ' not stated' : 'Lengths ✓';
+  updateSelCount();
+  setTimeout(setLengthsIdle, 2500);
+});
 
 /* ---------- link list export ---------- */
 

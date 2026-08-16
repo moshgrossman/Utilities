@@ -13,7 +13,7 @@ the one-time switch-on).
 | Tool | Lives in | Live address | Version |
 |---|---|---|---|
 | Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `converter/` | `/Utilities/converter/` | 3.4 |
-| Audio Finder — pulls audio links out of a Chrome network log | `audio-finder/` | `/Utilities/audio-finder/` | 1.3 |
+| Audio Finder — pulls audio links out of a Chrome network log | `audio-finder/` | `/Utilities/audio-finder/` | 1.4 |
 | Launcher — the front page listing the tools | `home/` | `/Utilities/home/` | 1.3 |
 
 ## One folder per app — why the layout looks like this
