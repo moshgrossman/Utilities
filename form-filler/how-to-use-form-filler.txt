@@ -1,6 +1,6 @@
 FORM FILLER - HOW TO USE IT
 
-Version 1.1
+Version 1.2
 
 
 WHAT IT DOES

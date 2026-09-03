@@ -7,7 +7,7 @@ const FF = (() => {
 
   const TOL = 2.2;            // how far apart two lines can be and still be "the same" line
   const MIN_RUN = 3;          // underscores in a row before it counts as a blank
-  const CB_MIN = 5, CB_MAX = 20;   // a box this size square is a checkbox, not a text field
+  const CB_MIN = 5, CB_MAX = 28;   // a square box up to this size is a tick box, not a text field
 
   // ---------- small matrix helpers (row-vector convention, same as pdf.js) ----------
   const mul = (m, n) => [
@@ -88,36 +88,71 @@ const FF = (() => {
     return { boxes, hLines, vLines };
   }
 
-  // ---------- text: where the words are, and where the underscore blanks are ----------
+  // ---------- text: where the words are, and where the blanks are ----------
   function collectText(textContent) {
-    const items = [], blanks = [];
+    const items = [], blanks = [], all = [];
+
     for (const it of textContent.items) {
       if (!it.str || !it.transform) continue;
       const t = it.transform;
       const size = Math.hypot(t[2], t[3]) || Math.hypot(t[0], t[1]) || 10;
       const x = t[4], y = t[5], w = it.width || 0;
+      all.push({ x, y, w, size, str: it.str });
       if (it.str.trim()) items.push({ x, y, w, h: size, str: it.str });
 
-      // Underscore runs become text fields. Width is apportioned by character
-      // count — close enough to land on the line, and the preview lets you nudge.
-      const re = /_{3,}/g;
+      if (!w || !it.str.length) continue;
+      const per = w / it.str.length;
+      const add = (from, len, src) => {
+        const bw = per * len;
+        if (bw > 8) blanks.push({ x: x + per * from, y: y - size * 0.28, w: bw, h: size * 1.25, src });
+      };
+
+      // Runs of underscores. Width is apportioned by character count — close
+      // enough to land on the line, and the preview lets you nudge it.
       let m;
-      while ((m = re.exec(it.str)) !== null) {
-        if (!w || !it.str.length) continue;
-        const per = w / it.str.length;
-        const bx = x + per * m.index;
-        const bw = per * m[0].length;
-        if (bw > 8) blanks.push({ x: bx, y: y - size * 0.28, w: bw, h: size * 1.25, src: 'underscores' });
-      }
+      const runs = /_{3,}/g;
+      while ((m = runs.exec(it.str)) !== null) add(m.index, m[0].length, 'underscores');
+
+      // Brackets with a gap inside them, where both fall in the same item.
+      const brackets = /\(\s{2,}\)/g;
+      while ((m = brackets.exec(it.str)) !== null) add(m.index + 1, m[0].length - 2, 'brackets');
     }
+
+    // "Tél. résidence (    ) ___" — the area-code gap. pdf.js usually breaks the
+    // line at the bracket, so the gap holds no characters at all and only the
+    // distance between the two pieces shows it is there.
+    for (const a of all) {
+      if (!/\($/.test(a.str)) continue;
+      const gx = a.x + a.w;
+      // The closing bracket is not always the very next item pdf.js hands over,
+      // so look for the nearest one to the right on the same line.
+      let best = null;
+      for (const b of all) {
+        if (b === a || !/^\s*\)/.test(b.str)) continue;
+        if (Math.abs(a.y - b.y) > 2 || b.x <= gx) continue;
+        if (!best || b.x < best.x) best = b;
+      }
+      if (!best) continue;
+      const gw = best.x - gx;
+      if (gw <= 8 || gw >= 90) continue;
+      // Only an EMPTY gap is a blank. "dix (10) journées" also arrives as a
+      // bracket pair with a gap, but the gap already has the answer in it.
+      const occupied = all.some(o =>
+        o !== a && o !== best && o.str.trim() &&
+        Math.abs(o.y - a.y) <= 2 && o.x < best.x - 1 && o.x + o.w > gx + 1);
+      if (occupied) continue;
+      blanks.push({ x: gx, y: a.y - a.size * 0.28, w: gw, h: a.size * 1.25, src: 'brackets' });
+    }
+
     // pdf.js often chops one long line of underscores into several items.
     // Anything sitting on the same baseline with barely a gap is one blank.
     blanks.sort((a, b) => (b.y - a.y) || (a.x - b.x));
     const merged = [];
     for (const b of blanks) {
       const prev = merged[merged.length - 1];
-      if (prev && Math.abs(prev.y - b.y) < 2 && b.x - (prev.x + prev.w) < 4 && b.x >= prev.x) {
-        prev.w = Math.max(prev.w + 0, b.x + b.w - prev.x);
+      if (prev && prev.src === b.src && b.src === 'underscores' &&
+          Math.abs(prev.y - b.y) < 2 && b.x - (prev.x + prev.w) < 4 && b.x >= prev.x) {
+        prev.w = Math.max(prev.w, b.x + b.w - prev.x);
         prev.h = Math.max(prev.h, b.h);
       } else merged.push({ ...b });
     }

@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.1';
+  const VERSION = '1.2';
   const A4 = { w: 595.28, h: 841.89 };
   const $ = s => document.querySelector(s);
   const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };

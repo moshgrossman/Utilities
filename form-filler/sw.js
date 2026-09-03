@@ -1,5 +1,5 @@
 /* Caches everything the tool needs so it keeps working with no network at all. */
-const CACHE = 'form-filler-v1.1';
+const CACHE = 'form-filler-v1.2';
 const ASSETS = [
   './', './index.html', './app.js', './detect.js', './manifest.json',
   './vendor/pdf.min.js', './vendor/pdf.worker.min.js', './vendor/pdf-lib.min.js',
