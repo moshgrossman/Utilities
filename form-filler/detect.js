@@ -146,49 +146,51 @@ const FF = (() => {
 
   const MIN_RULE = 13;   // shorter than this and it is a letter stroke, not a table border
 
+  // Merge the segments sitting on one line into a set of intervals, so a border
+  // drawn cell-by-cell still reads as one continuous rule.
+  function mergeIntervals(list) {
+    list.sort((a, b) => a[0] - b[0]);
+    const out = [];
+    for (const iv of list) {
+      const last = out[out.length - 1];
+      if (last && iv[0] <= last[1] + TOL) last[1] = Math.max(last[1], iv[1]);
+      else out.push([iv[0], iv[1]]);
+    }
+    return out;
+  }
+
   function findCells(geom) {
     const hL = geom.hLines.filter(l => l.x2 - l.x1 >= MIN_RULE);
     const vL = geom.vLines.filter(l => l.y2 - l.y1 >= MIN_RULE);
     const ys = cluster(hL.map(l => l.y), TOL);
-    const xs = cluster(vL.map(l => l.x), TOL);
-    if (ys.length < 2 || xs.length < 2) return [];
+    if (ys.length < 2 || !vL.length) return [];
 
-    // Merge every segment sitting on the same line into one set of intervals,
-    // so a border drawn cell-by-cell still reads as one continuous rule.
-    const bandH = new Map(), bandV = new Map();
-    const push = (map, key, a, b) => { if (!map.has(key)) map.set(key, []); map.get(key).push([a, b]); };
+    const bandH = new Map();
     for (const l of hL) {
       const y = snap(ys, l.y, TOL);
-      if (y !== undefined) push(bandH, y, l.x1, l.x2);
+      if (y === undefined) continue;
+      if (!bandH.has(y)) bandH.set(y, []);
+      bandH.get(y).push([l.x1, l.x2]);
     }
-    for (const l of vL) {
-      const x = snap(xs, l.x, TOL);
-      if (x !== undefined) push(bandV, x, l.y1, l.y2);
-    }
-    const merge = list => {
-      list.sort((a, b) => a[0] - b[0]);
-      const out = [];
-      for (const iv of list) {
-        const last = out[out.length - 1];
-        if (last && iv[0] <= last[1] + TOL) last[1] = Math.max(last[1], iv[1]);
-        else out.push([iv[0], iv[1]]);
-      }
-      return out;
-    };
-    for (const [k, v] of bandH) bandH.set(k, merge(v));
-    for (const [k, v] of bandV) bandV.set(k, merge(v));
-    const covers = (map, key, a, b) =>
-      (map.get(key) || []).some(iv => iv[0] <= a + TOL && iv[1] >= b - TOL);
+    for (const [k, v] of bandH) bandH.set(k, mergeIntervals(v));
+    const spansH = (y, a, b) => (bandH.get(y) || []).some(iv => iv[0] <= a + TOL && iv[1] >= b - TOL);
 
     const cells = [];
     for (let r = 0; r < ys.length - 1; r++) {
       const yb = ys[r], yt = ys[r + 1];
       if (yt - yb < 6) continue;
+
+      // Column edges are worked out for THIS row only, from the verticals that
+      // actually run its full height. A line belonging to some other box further
+      // down the page can then never split one of this row's cells in two.
+      const here = vL.filter(l => l.y1 <= yb + TOL && l.y2 >= yt - TOL);
+      if (here.length < 2) continue;
+      const xs = cluster(here.map(l => l.x), TOL);
+
       for (let c = 0; c < xs.length - 1; c++) {
         const xl = xs[c], xr = xs[c + 1];
         if (xr - xl < 6) continue;
-        if (covers(bandH, yb, xl, xr) && covers(bandH, yt, xl, xr) &&
-            covers(bandV, xl, yb, yt) && covers(bandV, xr, yb, yt)) {
+        if (spansH(yb, xl, xr) && spansH(yt, xl, xr)) {
           cells.push({ x: xl, y: yb, w: xr - xl, h: yt - yb });
         }
       }
