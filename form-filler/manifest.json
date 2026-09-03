@@ -1,0 +1,16 @@
+{
+  "id": "/Utilities/form-filler/",
+  "name": "Form Filler",
+  "short_name": "Form Filler",
+  "description": "Turns a flat PDF or Word document into a fillable form, entirely on your device.",
+  "start_url": "/Utilities/form-filler/",
+  "scope": "/Utilities/form-filler/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "icons": [
+    { "src": "/Utilities/icons/icon-form-filler-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/Utilities/icons/icon-form-filler-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/Utilities/icons/icon-form-filler-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

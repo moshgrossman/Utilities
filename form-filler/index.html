@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="../icons/icon-form-filler-192.png">
+<title>Form Filler</title>
+<style>
+  /* System fonts only — a web font would need the network, and this tool must work offline. */
+  :root {
+    --bg:#0f0f0f; --surface:#1a1a1a; --border:#2e2e2e; --accent:#e8ff47;
+    --accent2:#47ffe8; --text:#e8e8e8; --muted:#7a7a7a; --warn:#ffb84d;
+    --mono: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); min-height:100vh; padding:20px 14px 60px;
+         font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .container { max-width:960px; margin:0 auto; }
+  header { border-left:3px solid var(--accent); padding-left:14px; margin-bottom:22px; }
+  h1 { font-size:1.35rem; font-weight:600; }
+  .subtitle { font-family:var(--mono); font-size:0.72rem; color:var(--muted); margin-top:5px; }
+  .hidden { display:none !important; }
+
+  /* ---------- buttons: always visible, never hover-only, big enough for a thumb ---------- */
+  button, .btn {
+    font:inherit; font-size:0.86rem; background:var(--surface); color:var(--text);
+    border:1px solid var(--border); border-radius:4px; padding:11px 14px; cursor:pointer;
+    min-height:44px; text-decoration:none; display:inline-flex; align-items:center; gap:7px;
+  }
+  button:active, .btn:active { border-color:var(--accent); }
+  button.on { border-color:var(--accent); color:var(--accent); }
+  button.primary { background:var(--accent); color:#0f0f0f; border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:0.5; }
+
+  /* ---------- drop zone ---------- */
+  #dropzone { border:2px dashed var(--border); border-radius:6px; padding:44px 20px; text-align:center; }
+  #dropzone.over { border-color:var(--accent); }
+  #dropzone p { color:var(--muted); font-size:0.88rem; margin:12px 0 18px; line-height:1.55; }
+  .note { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent2);
+          border-radius:4px; padding:14px 16px; margin-top:20px; font-size:0.82rem; line-height:1.6; color:#c9c9c9; }
+  .note b { color:var(--text); }
+
+  /* ---------- toolbar ---------- */
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+  .bar .sep { flex:1 1 auto; }
+  .label { font-family:var(--mono); font-size:0.7rem; color:var(--muted); text-transform:uppercase;
+           letter-spacing:0.06em; align-self:center; margin-right:2px; }
+  #hint { font-size:0.8rem; color:var(--muted); margin:4px 0 14px; line-height:1.5; }
+  .status { font-size:0.84rem; color:var(--accent2); margin:10px 0; font-family:var(--mono); }
+  .status.warn { color:var(--warn); }
+
+  /* ---------- pages and fields ---------- */
+  #stage { display:flex; flex-direction:column; align-items:center; gap:26px; touch-action:pan-y; }
+  .page-wrap { width:100%; display:flex; flex-direction:column; align-items:center; }
+  .page-cap { font-family:var(--mono); font-size:0.68rem; color:var(--muted); margin-bottom:6px; align-self:flex-start; }
+  .page { position:relative; background:#fff; box-shadow:0 0 0 1px var(--border); max-width:100%; }
+  .page-img { display:block; }
+  .layer { position:absolute; inset:0; }
+  .fld { position:absolute; background:rgba(71,255,232,0.16); border:1.5px solid #2fd0bd;
+         border-radius:2px; cursor:move; }
+  .fld.check { background:rgba(232,255,71,0.20); border-color:#c3d92c; }
+  .fld.sel { border-color:#ff5c8a; background:rgba(255,92,138,0.18); z-index:5; }
+  .fld .num { position:absolute; top:-9px; left:-3px; font-family:var(--mono); font-size:9px;
+              background:#0f0f0f; color:var(--accent); padding:0 3px; border-radius:2px; line-height:14px; }
+  .fld .grip { position:absolute; right:-8px; bottom:-8px; width:18px; height:18px;
+               background:#ff5c8a; border:2px solid #0f0f0f; border-radius:50%; cursor:nwse-resize; }
+  .fld .del { position:absolute; right:-11px; top:-13px; width:24px; height:24px; min-height:0;
+              padding:0; justify-content:center; border-radius:50%; background:#ff5c8a; color:#0f0f0f;
+              border:2px solid #0f0f0f; font-size:15px; font-weight:700; line-height:1; }
+  .ghost { position:absolute; background:rgba(255,92,138,0.25); border:1.5px dashed #ff5c8a; }
+
+  /* ---------- done ---------- */
+  #done .big { font-size:1.05rem; margin-bottom:8px; }
+  #done .row { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+  code { font-family:var(--mono); color:var(--accent); font-size:0.85rem; word-break:break-all; }
+  footer { margin-top:34px; font-family:var(--mono); font-size:0.7rem; color:var(--muted); line-height:1.7; }
+
+  /* ---------- offscreen Word layout stage ---------- */
+  .docx-sheet { width:794px; background:#fff; color:#000; padding:57px; font-family:"Times New Roman",Times,serif;
+                font-size:16px; line-height:1.35; }
+  .docx-sheet table { border-collapse:collapse; width:100%; }
+  .docx-sheet td, .docx-sheet th { border:1px solid #000; padding:3px 5px; min-height:18px; }
+  .docx-sheet .ff-blank { display:inline-block; min-width:20px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>📝 Form Filler</h1>
+    <div class="subtitle">// <span class="ver"></span> · turns a flat PDF or Word file into a fillable form ·
+      runs on this device · nothing uploaded</div>
+  </header>
+
+  <div id="status" class="status hidden"></div>
+
+  <!-- ============ 1. choose a file ============ -->
+  <section id="drop">
+    <div id="dropzone">
+      <div style="font-size:2.2rem">📄→✍️</div>
+      <p>Drop a <b>.pdf</b> or <b>.docx</b> here, or choose one.<br>
+         Every blank line, box and tick square becomes typeable.</p>
+      <button id="pick" class="primary">Choose a file</button>
+      <input id="file" type="file" accept=".pdf,.docx,application/pdf" class="hidden">
+    </div>
+
+    <div class="note">
+      <b>How it works.</b> The file is read here, on your device — it is never sent anywhere.
+      You get a preview with a box drawn on every blank it found, numbered in the order the
+      <b>Tab</b> key will follow. Fix anything it got wrong, then save the fillable PDF.
+      <br><br>
+      <b>Two columns.</b> Where a page has two columns of blanks side by side, Tab runs all the
+      way down the left column first, then all the way down the right one.
+      <br><br>
+      <b>Scanned pages.</b> A photo or scan has no text to read, so nothing is found automatically —
+      you can still draw every field by hand.
+      <br><br>
+      <b>Word files.</b> Layout is re-created and comes out close, not identical. For an exact
+      match, save the Word file as PDF first and feed it that.
+      <br><br>
+      <b>No internet needed.</b> Once this page has loaded once it keeps working with the
+      network off. To carry it around as a single file, save the copy below and open it
+      from your Downloads folder — it needs nothing else.
+      <div style="margin-top:12px">
+        <a class="btn" href="form-filler-offline.html" download="form-filler-offline.html">
+          ⤓ Save offline copy (one file, 3 MB)</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. preview and edit ============ -->
+  <section id="editor" class="hidden">
+    <div class="bar">
+      <button id="restart">← Start over</button>
+      <span class="label" id="srcName"></span>
+      <span class="sep"></span>
+      <span class="label" id="count"></span>
+      <button id="make" class="primary">Make fillable PDF ↓</button>
+    </div>
+
+    <div class="bar">
+      <span class="label">Edit</span>
+      <button data-tool="select" class="on">Select / move</button>
+      <button data-tool="addtext">+ Text box</button>
+      <button data-tool="addcheck">+ Tick box</button>
+      <button data-tool="renumber">Set tab order</button>
+    </div>
+
+    <div class="bar">
+      <span class="label">Tab order</span>
+      <button data-order="auto" class="on">Auto</button>
+      <button data-order="down">Down columns</button>
+      <button data-order="across">Across rows</button>
+    </div>
+
+    <div id="hint"></div>
+    <div id="stage"></div>
+  </section>
+
+  <!-- ============ 3. done ============ -->
+  <section id="done" class="hidden">
+    <div class="note">
+      <div class="big">✅ Saved to your Downloads folder.</div>
+      <code id="doneName"></code>
+      <p style="margin-top:10px;color:var(--muted);font-size:0.82rem">
+        <span id="doneCount"></span> fillable fields. Open it in Chrome, any PDF reader, or
+        Acrobat — type in it, press Tab to jump to the next one.</p>
+      <div class="row">
+        <a id="tryit" class="btn" target="_blank" rel="noopener">Open it now ↗</a>
+        <button id="again">Do another file</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Works offline once loaded — open in Chrome and “Install app” to keep it on the device.<br>
+    <span class="ver"></span> · github.com/moshgrossman/Utilities
+  </footer>
+</div>
+
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf-lib.min.js"></script>
+<script src="vendor/mammoth.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';</script>
+<script src="detect.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
