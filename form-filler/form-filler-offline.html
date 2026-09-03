@@ -79,8 +79,12 @@
   .docx-sheet { width:794px; background:#fff; color:#000; padding:57px; font-family:"Times New Roman",Times,serif;
                 font-size:16px; line-height:1.35; }
   .docx-sheet table { border-collapse:collapse; width:100%; }
-  .docx-sheet td, .docx-sheet th { border:1px solid #000; padding:3px 5px; min-height:18px; }
+  .docx-sheet td, .docx-sheet th { border:1px solid #000; padding:3px 5px; vertical-align:top; }
+  .docx-sheet img { max-width:100%; height:auto; }
   .docx-sheet .ff-blank { display:inline-block; min-width:20px; }
+  /* keeps an empty cell a full line tall, so its field is a full line tall too */
+  .docx-sheet .ff-pad { display:inline-block; line-height:1.35; }
+  .docx-sheet .ff-tail { display:inline-block; line-height:1.35; }
 </style>
 </head>
 <body>
@@ -111,6 +115,9 @@
       <br><br>
       <b>Two columns.</b> Where a page has two columns of blanks side by side, Tab runs all the
       way down the left column first, then all the way down the right one.
+      <br><br>
+      <b>Labels with no line.</b> A label ending in a colon with empty space after it —
+      "Name :" in a table cell — gets a box too, even with no line drawn.
       <br><br>
       <b>Scanned pages.</b> A photo or scan has no text to read, so nothing is found automatically —
       you can still draw every field by hand.
@@ -424,49 +431,51 @@ const FF = (() => {
 
   const MIN_RULE = 13;   // shorter than this and it is a letter stroke, not a table border
 
+  // Merge the segments sitting on one line into a set of intervals, so a border
+  // drawn cell-by-cell still reads as one continuous rule.
+  function mergeIntervals(list) {
+    list.sort((a, b) => a[0] - b[0]);
+    const out = [];
+    for (const iv of list) {
+      const last = out[out.length - 1];
+      if (last && iv[0] <= last[1] + TOL) last[1] = Math.max(last[1], iv[1]);
+      else out.push([iv[0], iv[1]]);
+    }
+    return out;
+  }
+
   function findCells(geom) {
     const hL = geom.hLines.filter(l => l.x2 - l.x1 >= MIN_RULE);
     const vL = geom.vLines.filter(l => l.y2 - l.y1 >= MIN_RULE);
     const ys = cluster(hL.map(l => l.y), TOL);
-    const xs = cluster(vL.map(l => l.x), TOL);
-    if (ys.length < 2 || xs.length < 2) return [];
+    if (ys.length < 2 || !vL.length) return [];
 
-    // Merge every segment sitting on the same line into one set of intervals,
-    // so a border drawn cell-by-cell still reads as one continuous rule.
-    const bandH = new Map(), bandV = new Map();
-    const push = (map, key, a, b) => { if (!map.has(key)) map.set(key, []); map.get(key).push([a, b]); };
+    const bandH = new Map();
     for (const l of hL) {
       const y = snap(ys, l.y, TOL);
-      if (y !== undefined) push(bandH, y, l.x1, l.x2);
+      if (y === undefined) continue;
+      if (!bandH.has(y)) bandH.set(y, []);
+      bandH.get(y).push([l.x1, l.x2]);
     }
-    for (const l of vL) {
-      const x = snap(xs, l.x, TOL);
-      if (x !== undefined) push(bandV, x, l.y1, l.y2);
-    }
-    const merge = list => {
-      list.sort((a, b) => a[0] - b[0]);
-      const out = [];
-      for (const iv of list) {
-        const last = out[out.length - 1];
-        if (last && iv[0] <= last[1] + TOL) last[1] = Math.max(last[1], iv[1]);
-        else out.push([iv[0], iv[1]]);
-      }
-      return out;
-    };
-    for (const [k, v] of bandH) bandH.set(k, merge(v));
-    for (const [k, v] of bandV) bandV.set(k, merge(v));
-    const covers = (map, key, a, b) =>
-      (map.get(key) || []).some(iv => iv[0] <= a + TOL && iv[1] >= b - TOL);
+    for (const [k, v] of bandH) bandH.set(k, mergeIntervals(v));
+    const spansH = (y, a, b) => (bandH.get(y) || []).some(iv => iv[0] <= a + TOL && iv[1] >= b - TOL);
 
     const cells = [];
     for (let r = 0; r < ys.length - 1; r++) {
       const yb = ys[r], yt = ys[r + 1];
       if (yt - yb < 6) continue;
+
+      // Column edges are worked out for THIS row only, from the verticals that
+      // actually run its full height. A line belonging to some other box further
+      // down the page can then never split one of this row's cells in two.
+      const here = vL.filter(l => l.y1 <= yb + TOL && l.y2 >= yt - TOL);
+      if (here.length < 2) continue;
+      const xs = cluster(here.map(l => l.x), TOL);
+
       for (let c = 0; c < xs.length - 1; c++) {
         const xl = xs[c], xr = xs[c + 1];
         if (xr - xl < 6) continue;
-        if (covers(bandH, yb, xl, xr) && covers(bandH, yt, xl, xr) &&
-            covers(bandV, xl, yb, yt) && covers(bandV, xr, yb, yt)) {
+        if (spansH(yb, xl, xr) && spansH(yt, xl, xr)) {
           cells.push({ x: xl, y: yb, w: xr - xl, h: yt - yb });
         }
       }
@@ -644,7 +653,7 @@ const FF = (() => {
 (() => {
   'use strict';
 
-  const VERSION = '1.0';
+  const VERSION = '1.1';
   const A4 = { w: 595.28, h: 841.89 };
   const $ = s => document.querySelector(s);
   const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
@@ -723,13 +732,23 @@ const FF = (() => {
     stage.appendChild(sheet);
 
     markBlanks(sheet);
+    // Measuring before the pictures have loaded puts every field near the top of
+    // the page, because the layout still has to grow around them. Wait first.
+    await settled(sheet);
     const sheetRect = sheet.getBoundingClientRect();
     const PX_PER_PT = sheetRect.width / A4.w;
     const pageHpx = A4.h * PX_PER_PT;
 
     const raw = [];
-    for (const node of sheet.querySelectorAll('.ff-blank, .ff-cell')) {
-      const r = node.getBoundingClientRect();
+    for (const node of sheet.querySelectorAll('.ff-blank, .ff-cell, .ff-tail')) {
+      let r = node.getBoundingClientRect();
+      if (node.classList.contains('ff-tail')) {
+        // Run the field from just after the label to the edge of what contains it.
+        const box = (node.closest('td, th, p, li') || sheet).getBoundingClientRect();
+        const right = box.right - 6;
+        if (right - r.left < 24) continue;
+        r = { left: r.left, top: r.top, width: right - r.left, height: r.height };
+      }
       if (r.width < 8 || r.height < 5) continue;
       raw.push({
         left: r.left - sheetRect.left, top: r.top - sheetRect.top,
@@ -764,6 +783,19 @@ const FF = (() => {
     if (!state.fields.length) noFieldsWarning();
   }
 
+  // Hold off measuring until images have loaded, fonts are ready and the browser
+  // has painted — only then do the rectangles match what gets photographed.
+  async function settled(root) {
+    const imgs = Array.from(root.querySelectorAll('img'));
+    await Promise.all(imgs.map(i => i.complete && i.naturalHeight
+      ? null
+      : new Promise(res => { i.addEventListener('load', res, { once: true });
+                             i.addEventListener('error', res, { once: true });
+                             setTimeout(res, 5000); })));
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (_) {} }
+    await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+  }
+
   function markBlanks(root) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const hits = [];
@@ -782,8 +814,25 @@ const FF = (() => {
       frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
       node.parentNode.replaceChild(frag, node);
     }
+    // A label that ends in a colon with empty space after it is a blank too,
+    // even with no line drawn — "Name :" in a table cell is the common case.
+    for (const cell of root.querySelectorAll('td, th, p, li')) {
+      if (cell.querySelector('table, img')) continue;
+      for (const line of Array.from(cell.childNodes)) {
+        if (line.nodeType !== Node.TEXT_NODE) continue;
+        const t = line.nodeValue;
+        if (!/[:：]\s*$/.test(t) || t.trim().length > 40 || /_{3,}/.test(t)) continue;
+        const tail = el('span', 'ff-tail', '\u00a0');
+        line.parentNode.insertBefore(tail, line.nextSibling);
+      }
+    }
+
     for (const td of root.querySelectorAll('td, th')) {
-      if (!td.textContent.trim() && !td.querySelector('img')) td.classList.add('ff-cell');
+      if (td.textContent.trim() || td.querySelector('img')) continue;
+      td.classList.add('ff-cell');
+      // An empty cell collapses to a couple of pixels, and the field would come
+      // out the same height. Give it the height one line of text would take.
+      td.appendChild(el('span', 'ff-pad', '\u00a0'));
     }
   }
 
@@ -801,6 +850,9 @@ const FF = (() => {
   function orderIndex(id) { return state.order.indexOf(id) + 1; }
 
   function render() {
+    // Rebuilding the pages throws away the scroll position, which reads as the
+    // page jumping back to the top under your finger. Put it back afterwards.
+    const sx = window.scrollX, sy = window.scrollY;
     const stage = $('#stage');
     stage.innerHTML = '';
     const wrapW = Math.min(stage.clientWidth || 900, 900);
@@ -845,6 +897,31 @@ const FF = (() => {
     });
 
     $('#count').textContent = `${state.fields.length} field${state.fields.length === 1 ? '' : 's'}`;
+    window.scrollTo(sx, sy);
+  }
+
+  // Selecting a field only changes a class and two handles — never rebuild the
+  // pages for that, or the view jumps.
+  function applySelection() {
+    for (const box of document.querySelectorAll('.fld')) {
+      const on = +box.dataset.id === state.selected;
+      box.classList.toggle('sel', on);
+      const grip = box.querySelector('.grip'), del = box.querySelector('.del');
+      if (on && !grip) box.appendChild(el('span', 'grip'));
+      if (on && !del) {
+        const b = el('button', 'del', '×');
+        b.title = 'Delete this field';
+        box.appendChild(b);
+      }
+      if (!on) { if (grip) grip.remove(); if (del) del.remove(); }
+    }
+  }
+
+  function refreshNumbers() {
+    for (const box of document.querySelectorAll('.fld')) {
+      const n = box.querySelector('.num');
+      if (n) n.textContent = orderIndex(+box.dataset.id);
+    }
   }
 
   // ---------- pointer handling: drag to move, grip to resize, drag to draw ----------
@@ -885,7 +962,7 @@ const FF = (() => {
       const placed = state.order.length - state.fields.length;
       state.order.splice(state._renumberAt ?? 0, 0, id);
       state._renumberAt = (state._renumberAt ?? 0) + 1;
-      render();
+      refreshNumbers();
       return;
     }
 
@@ -902,9 +979,9 @@ const FF = (() => {
       const f = state.fields.find(x => x.id === id);
       const mode = e.target.classList.contains('grip') ? 'resize' : 'move';
       drag = { mode, id, startX: hit.x, startY: hit.yTop, f0: { ...f }, pg: hit.pg, scale: hit.scale };
-      render();
+      applySelection();
     } else {
-      state.selected = null; render();
+      state.selected = null; applySelection();
     }
   }
 
@@ -972,11 +1049,15 @@ const FF = (() => {
       state.fields.push(f);
       state.selected = f.id;
       reorder();
-    } else {
-      reorder();
+      drag = null;
+      render();            // a new box has to be added to the page
+      applySelection();
+      return;
     }
+    reorder();
     drag = null;
-    render();
+    refreshNumbers();      // the boxes are already in place — only the order moved
+    applySelection();
   }
 
   // ============================ writing the fillable PDF ============================
@@ -1029,11 +1110,11 @@ const FF = (() => {
       }
     }
 
-    // Ask viewers to draw the fields themselves — keeps them looking native.
-    try {
-      const { PDFName, PDFBool } = PDFLib;
-      form.acroForm.dict.set(PDFName.of('NeedAppearances'), PDFBool.True);
-    } catch (_) { /* older pdf-lib — appearances are already generated */ }
+    // Do NOT set NeedAppearances. It tells the viewer to throw away the
+    // appearance streams and redraw every field, and some viewers then draw a
+    // checkbox in its ticked state — the form arrives with boxes already ticked.
+    // pdf-lib writes correct appearances for both states, so let those stand.
+    form.updateFieldAppearances(font);
 
     return await doc.save({ useObjectStreams: false });
   }
@@ -1090,7 +1171,7 @@ const FF = (() => {
       b.addEventListener('click', () => {
         state.orderMode = b.dataset.order;
         for (const o of document.querySelectorAll('[data-order]')) o.classList.toggle('on', o === b);
-        reorder(); render();
+        reorder(); refreshNumbers();
       });
     }
 

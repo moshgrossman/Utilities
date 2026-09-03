@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.0';
+  const VERSION = '1.1';
   const A4 = { w: 595.28, h: 841.89 };
   const $ = s => document.querySelector(s);
   const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
@@ -83,13 +83,23 @@
     stage.appendChild(sheet);
 
     markBlanks(sheet);
+    // Measuring before the pictures have loaded puts every field near the top of
+    // the page, because the layout still has to grow around them. Wait first.
+    await settled(sheet);
     const sheetRect = sheet.getBoundingClientRect();
     const PX_PER_PT = sheetRect.width / A4.w;
     const pageHpx = A4.h * PX_PER_PT;
 
     const raw = [];
-    for (const node of sheet.querySelectorAll('.ff-blank, .ff-cell')) {
-      const r = node.getBoundingClientRect();
+    for (const node of sheet.querySelectorAll('.ff-blank, .ff-cell, .ff-tail')) {
+      let r = node.getBoundingClientRect();
+      if (node.classList.contains('ff-tail')) {
+        // Run the field from just after the label to the edge of what contains it.
+        const box = (node.closest('td, th, p, li') || sheet).getBoundingClientRect();
+        const right = box.right - 6;
+        if (right - r.left < 24) continue;
+        r = { left: r.left, top: r.top, width: right - r.left, height: r.height };
+      }
       if (r.width < 8 || r.height < 5) continue;
       raw.push({
         left: r.left - sheetRect.left, top: r.top - sheetRect.top,
@@ -124,6 +134,19 @@
     if (!state.fields.length) noFieldsWarning();
   }
 
+  // Hold off measuring until images have loaded, fonts are ready and the browser
+  // has painted — only then do the rectangles match what gets photographed.
+  async function settled(root) {
+    const imgs = Array.from(root.querySelectorAll('img'));
+    await Promise.all(imgs.map(i => i.complete && i.naturalHeight
+      ? null
+      : new Promise(res => { i.addEventListener('load', res, { once: true });
+                             i.addEventListener('error', res, { once: true });
+                             setTimeout(res, 5000); })));
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (_) {} }
+    await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+  }
+
   function markBlanks(root) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const hits = [];
@@ -142,8 +165,25 @@
       frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
       node.parentNode.replaceChild(frag, node);
     }
+    // A label that ends in a colon with empty space after it is a blank too,
+    // even with no line drawn — "Name :" in a table cell is the common case.
+    for (const cell of root.querySelectorAll('td, th, p, li')) {
+      if (cell.querySelector('table, img')) continue;
+      for (const line of Array.from(cell.childNodes)) {
+        if (line.nodeType !== Node.TEXT_NODE) continue;
+        const t = line.nodeValue;
+        if (!/[:：]\s*$/.test(t) || t.trim().length > 40 || /_{3,}/.test(t)) continue;
+        const tail = el('span', 'ff-tail', '\u00a0');
+        line.parentNode.insertBefore(tail, line.nextSibling);
+      }
+    }
+
     for (const td of root.querySelectorAll('td, th')) {
-      if (!td.textContent.trim() && !td.querySelector('img')) td.classList.add('ff-cell');
+      if (td.textContent.trim() || td.querySelector('img')) continue;
+      td.classList.add('ff-cell');
+      // An empty cell collapses to a couple of pixels, and the field would come
+      // out the same height. Give it the height one line of text would take.
+      td.appendChild(el('span', 'ff-pad', '\u00a0'));
     }
   }
 
@@ -161,6 +201,9 @@
   function orderIndex(id) { return state.order.indexOf(id) + 1; }
 
   function render() {
+    // Rebuilding the pages throws away the scroll position, which reads as the
+    // page jumping back to the top under your finger. Put it back afterwards.
+    const sx = window.scrollX, sy = window.scrollY;
     const stage = $('#stage');
     stage.innerHTML = '';
     const wrapW = Math.min(stage.clientWidth || 900, 900);
@@ -205,6 +248,31 @@
     });
 
     $('#count').textContent = `${state.fields.length} field${state.fields.length === 1 ? '' : 's'}`;
+    window.scrollTo(sx, sy);
+  }
+
+  // Selecting a field only changes a class and two handles — never rebuild the
+  // pages for that, or the view jumps.
+  function applySelection() {
+    for (const box of document.querySelectorAll('.fld')) {
+      const on = +box.dataset.id === state.selected;
+      box.classList.toggle('sel', on);
+      const grip = box.querySelector('.grip'), del = box.querySelector('.del');
+      if (on && !grip) box.appendChild(el('span', 'grip'));
+      if (on && !del) {
+        const b = el('button', 'del', '×');
+        b.title = 'Delete this field';
+        box.appendChild(b);
+      }
+      if (!on) { if (grip) grip.remove(); if (del) del.remove(); }
+    }
+  }
+
+  function refreshNumbers() {
+    for (const box of document.querySelectorAll('.fld')) {
+      const n = box.querySelector('.num');
+      if (n) n.textContent = orderIndex(+box.dataset.id);
+    }
   }
 
   // ---------- pointer handling: drag to move, grip to resize, drag to draw ----------
@@ -245,7 +313,7 @@
       const placed = state.order.length - state.fields.length;
       state.order.splice(state._renumberAt ?? 0, 0, id);
       state._renumberAt = (state._renumberAt ?? 0) + 1;
-      render();
+      refreshNumbers();
       return;
     }
 
@@ -262,9 +330,9 @@
       const f = state.fields.find(x => x.id === id);
       const mode = e.target.classList.contains('grip') ? 'resize' : 'move';
       drag = { mode, id, startX: hit.x, startY: hit.yTop, f0: { ...f }, pg: hit.pg, scale: hit.scale };
-      render();
+      applySelection();
     } else {
-      state.selected = null; render();
+      state.selected = null; applySelection();
     }
   }
 
@@ -332,11 +400,15 @@
       state.fields.push(f);
       state.selected = f.id;
       reorder();
-    } else {
-      reorder();
+      drag = null;
+      render();            // a new box has to be added to the page
+      applySelection();
+      return;
     }
+    reorder();
     drag = null;
-    render();
+    refreshNumbers();      // the boxes are already in place — only the order moved
+    applySelection();
   }
 
   // ============================ writing the fillable PDF ============================
@@ -389,11 +461,11 @@
       }
     }
 
-    // Ask viewers to draw the fields themselves — keeps them looking native.
-    try {
-      const { PDFName, PDFBool } = PDFLib;
-      form.acroForm.dict.set(PDFName.of('NeedAppearances'), PDFBool.True);
-    } catch (_) { /* older pdf-lib — appearances are already generated */ }
+    // Do NOT set NeedAppearances. It tells the viewer to throw away the
+    // appearance streams and redraw every field, and some viewers then draw a
+    // checkbox in its ticked state — the form arrives with boxes already ticked.
+    // pdf-lib writes correct appearances for both states, so let those stand.
+    form.updateFieldAppearances(font);
 
     return await doc.save({ useObjectStreams: false });
   }
@@ -450,7 +522,7 @@
       b.addEventListener('click', () => {
         state.orderMode = b.dataset.order;
         for (const o of document.querySelectorAll('[data-order]')) o.classList.toggle('on', o === b);
-        reorder(); render();
+        reorder(); refreshNumbers();
       });
     }
 

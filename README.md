@@ -14,7 +14,7 @@ the one-time switch-on).
 |---|---|---|---|
 | Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `converter/` | `/Utilities/converter/` | 3.4 |
 | Audio Finder — pulls audio links out of a Chrome network log | `audio-finder/` | `/Utilities/audio-finder/` | 1.4 |
-| Form Filler — flat PDF / Word doc → fillable form | `form-filler/` | `/Utilities/form-filler/` | 1.0 |
+| Form Filler — flat PDF / Word doc → fillable form | `form-filler/` | `/Utilities/form-filler/` | 1.1 |
 | Launcher — the front page listing the tools | `home/` | `/Utilities/home/` | 1.4 |
 
 ## One folder per app — why the layout looks like this

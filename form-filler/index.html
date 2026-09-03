@@ -81,8 +81,12 @@
   .docx-sheet { width:794px; background:#fff; color:#000; padding:57px; font-family:"Times New Roman",Times,serif;
                 font-size:16px; line-height:1.35; }
   .docx-sheet table { border-collapse:collapse; width:100%; }
-  .docx-sheet td, .docx-sheet th { border:1px solid #000; padding:3px 5px; min-height:18px; }
+  .docx-sheet td, .docx-sheet th { border:1px solid #000; padding:3px 5px; vertical-align:top; }
+  .docx-sheet img { max-width:100%; height:auto; }
   .docx-sheet .ff-blank { display:inline-block; min-width:20px; }
+  /* keeps an empty cell a full line tall, so its field is a full line tall too */
+  .docx-sheet .ff-pad { display:inline-block; line-height:1.35; }
+  .docx-sheet .ff-tail { display:inline-block; line-height:1.35; }
 </style>
 </head>
 <body>
@@ -113,6 +117,9 @@
       <br><br>
       <b>Two columns.</b> Where a page has two columns of blanks side by side, Tab runs all the
       way down the left column first, then all the way down the right one.
+      <br><br>
+      <b>Labels with no line.</b> A label ending in a colon with empty space after it —
+      "Name :" in a table cell — gets a box too, even with no line drawn.
       <br><br>
       <b>Scanned pages.</b> A photo or scan has no text to read, so nothing is found automatically —
       you can still draw every field by hand.
