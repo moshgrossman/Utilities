@@ -1,0 +1,117 @@
+FORM FILLER - HOW TO USE IT
+
+Version 1.0
+
+
+WHAT IT DOES
+
+You give it a PDF or a Word document that has blank lines on it - the kind
+you would normally print and fill in with a pen.
+
+It gives you back the same document, with a typing box sitting on every
+blank line, so you can fill it in on a screen instead.
+
+Nothing is uploaded. The file is read on your own device and never leaves it.
+
+
+HOW LONG IT TAKES
+
+About two minutes for a two-page form.
+
+You need: the file you want to convert, and Chrome.
+
+
+STEP 1 - OPEN THE TOOL
+
+Go to:
+
+https://moshgrossman.github.io/Utilities/form-filler/
+
+You should see a dark page with the heading "Form Filler" and a big dashed
+box in the middle.
+
+If the page does not load, check you typed the address exactly. There is no
+login and nothing to install.
+
+
+STEP 2 - CHOOSE YOUR FILE
+
+Tap "Choose a file", then pick your .pdf or .docx file.
+
+After a few seconds you should see your document appear on screen, with a
+pale blue box drawn on top of every blank line it found, and a small number
+in the corner of each box.
+
+Those numbers are the order the Tab key will follow when you fill the form
+in later. Where a page has two columns side by side, the numbers run all the
+way down the left column first, then all the way down the right one.
+
+If nothing appears and you get an orange message about a scanned page, it
+means your file is a photograph of a document rather than a real document.
+Skip to Step 4 - you can still place every box by hand.
+
+
+STEP 3 - FIX ANYTHING IT GOT WRONG
+
+This is the part worth spending a minute on. The buttons across the top are:
+
+Select / move - tap a box to pick it. Drag the middle of it to move it.
+Drag the pink circle at its bottom-right corner to make it bigger or
+smaller. Tap the pink x to delete it.
+
++ Text box - drag across any blank line it missed, and a new typing box
+appears there.
+
++ Tick box - tap anywhere you want a small square you can tick.
+
+Set tab order - tap the boxes one after another, in the order you want the
+Tab key to jump between them. Use this only if the automatic order is wrong.
+
+There is also a "Tab order" row with three choices. Auto is usually right.
+"Down columns" forces the left-then-right behaviour everywhere. "Across
+rows" makes Tab go straight across the page instead.
+
+
+STEP 4 - SAVE IT
+
+Tap the yellow "Make fillable PDF" button at the top right.
+
+The file lands in your Downloads folder with "_fillable" added to its name.
+
+Tap "Open it now" to check it. Tap in the first box, type something, and
+press Tab - it should jump to the next box in the right order.
+
+If a box is in the wrong place, go back, move it, and save again. Saving
+again is free and makes a fresh copy.
+
+
+USING IT WITH NO INTERNET
+
+Once the page has loaded once, it keeps working with the network off.
+
+To make that certain, do one of these:
+
+Either open the page in Chrome, tap the three dots at the top right, and
+choose "Add to Home screen" or "Install app". It then behaves like any other
+app on the tablet and does not need a connection.
+
+Or, on the first screen, tap "Save offline copy (one file, 3 MB)". That
+saves a single file to your Downloads folder. Opening that file gives you
+the whole tool with nothing else needed - no internet, no other files. This
+is the one to keep on a device that is usually offline.
+
+
+IF SOMETHING GOES WRONG
+
+Nothing appears after choosing a file - the file is probably a scan. Use
+"+ Text box" to place the boxes yourself.
+
+The boxes are in roughly the right place but shifted - drag them. The tool
+guesses where the line is from the text, and on some fonts it is a few
+millimetres out.
+
+A table's last column has no boxes - add them with "+ Text box". Table
+detection is a bonus feature; blank lines are what it is built for.
+
+The saved PDF will not let you type - open it in Chrome or a proper PDF
+reader rather than a photo viewer.
