@@ -2,7 +2,7 @@
   "id": "/Utilities/converter/",
   "name": "TXT Converter",
   "short_name": "Converter",
-  "description": "EPUB / PDF / MOBI / CSV → plain .txt, entirely in the browser.",
+  "description": "EPUB / PDF / MOBI / CSV / web pages → plain .txt, entirely in the browser.",
   "start_url": "/Utilities/converter/",
   "scope": "/Utilities/converter/",
   "display": "standalone",

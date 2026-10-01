@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f0f0f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="../icons/icon-converter-192.png">
-<title>EPUB / PDF / MOBI / CSV → TXT Bulk Converter</title>
+<title>EPUB / PDF / MOBI / CSV / HTML → TXT Bulk Converter</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
 
@@ -205,14 +205,14 @@
 <body>
 <div class="container">
   <header>
-    <h1>EPUB / PDF / MOBI / CSV → TXT</h1>
-    <div class="subtitle">// v3.4 · bulk converter · runs locally in browser · nothing uploaded</div>
+    <h1>EPUB / PDF / MOBI / CSV / HTML → TXT</h1>
+    <div class="subtitle">// v3.5 · bulk converter · runs locally in browser · nothing uploaded</div>
   </header>
 
   <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept="application/epub+zip,application/pdf,application/x-mobipocket-ebook,text/plain,text/csv,.epub,.pdf,.mobi,.txt,.csv" multiple>
+    <input type="file" id="fileInput" accept="application/epub+zip,application/pdf,application/x-mobipocket-ebook,text/plain,text/csv,text/html,multipart/related,message/rfc822,.epub,.pdf,.mobi,.txt,.csv,.html,.htm,.mhtml,.mht" multiple>
     <span class="drop-icon">📚</span>
-    <div class="drop-label">Drop <span>.epub, .pdf, .mobi, .csv, .txt files</span> here, or tap to browse</div>
+    <div class="drop-label">Drop <span>.epub, .pdf, .mobi, .csv, .html, .mhtml, .txt files</span> here, or tap to browse</div>
   </div>
 
   <div class="options">
@@ -227,6 +227,10 @@
     <label class="option-label">
       <input type="checkbox" id="keepTitles" checked>
       Keep headings
+    </label>
+    <label class="option-label">
+      <input type="checkbox" id="combineSmall">
+      Combine small files (~300 KB each)
     </label>
   </div>
 
@@ -268,6 +272,9 @@
   const progressFill = document.getElementById('progressFill');
   const statsEl = document.getElementById('stats');
 
+  const SUPPORTED = /\.(epub|pdf|mobi|txt|csv|html?|mhtml?)$/i;
+  const EXT = /\.(epub|pdf|mobi|csv|txt|html?|mhtml?)$/i;
+
   let files = [];
   let results = {};
 
@@ -276,11 +283,11 @@
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    addFiles([...e.dataTransfer.files].filter(f => /\.(epub|pdf|mobi|txt|csv)$/i.test(f.name)));
+    addFiles([...e.dataTransfer.files].filter(f => SUPPORTED.test(f.name)));
   });
 
   fileInput.addEventListener('change', () => {
-    addFiles([...fileInput.files].filter(f => /\.(epub|pdf|mobi|txt|csv)$/i.test(f.name)));
+    addFiles([...fileInput.files].filter(f => SUPPORTED.test(f.name)));
     fileInput.value = '';
   });
 
@@ -649,6 +656,158 @@
     return await file.text();
   }
 
+  // ── HTML / MHTML extraction (web pages → article text only) ────
+  // Saved web pages carry menus, ads, share buttons and "related
+  // stories" around the article. Strip those, pick the block that holds
+  // the article's paragraphs, and keep only its text.
+  const STORY_BOXES = ['#workskin', '#storytext'];
+  const JUNK_TAGS = 'script,style,noscript,template,svg,canvas,iframe,object,embed,' +
+    'video,audio,img,picture,form,button,input,select,textarea,nav,aside,footer,dialog';
+  const JUNK_WORDS = /(^|[-_\s])(ads?|advert\w*|sponsor\w*|promo\w*|related|recommend\w*|share|sharing|social|newsletter|subscribe|signup|comments?|sidebar|cookie\w*|consent|popup|modal|banner|outbrain|taboola|breadcrumbs?|menu|toolbar|paywall|landmark|actions|feedback|kudos)([-_\s]|$)/i;
+
+  function htmlToText(html, fallbackTitle) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const ogTitle = doc.querySelector('meta[property="og:title"]');
+    let title = (ogTitle && ogTitle.getAttribute('content')) || (doc.title || '');
+    title = title.replace(/\s+/g, ' ')
+      .replace(/\s*\[Archive of Our Own\]\s*$/i, '')
+      .replace(/\s*\|\s*FanFiction\s*$/i, '')
+      .trim() || fallbackTitle;
+
+    doc.querySelectorAll(JUNK_TAGS).forEach(el => el.remove());
+    doc.querySelectorAll('[hidden],[aria-hidden="true"],[role="navigation"],[role="banner"],[role="complementary"],[role="contentinfo"]')
+      .forEach(el => el.remove());
+    const pText = el => [...el.querySelectorAll('p')].reduce((n, p) => n + p.textContent.trim().length, 0);
+    const ARTICLE = 'article,main,[role="main"],[itemprop="articleBody"]';
+    doc.querySelectorAll('[class],[id]').forEach(el => {
+      if (!el.isConnected || el === doc.body || el === doc.documentElement) return;
+      const label = (el.getAttribute('class') || '') + ' ' + (el.getAttribute('id') || '');
+      if (!JUNK_WORDS.test(label)) return;
+      // Never remove a wrapper that holds the article itself
+      // (e.g. <div class="page share-enabled"> around everything).
+      if (el.matches(ARTICLE) || el.querySelector(ARTICLE) || pText(el) > 1000) return;
+      el.remove();
+    });
+
+    // Pick the story/article. Story sites first, by their own markers:
+    // AO3 keeps the whole work (title, summary, notes, chapters) in
+    // #workskin; fanfiction.net keeps the chapter in #storytext.
+    let root = null;
+    for (const sel of STORY_BOXES) {
+      const el = doc.querySelector(sel);
+      if (el && el.textContent.trim().length > 200) { root = el; break; }
+    }
+    // Otherwise the article-type block with the most paragraph text …
+    if (!root) {
+      let best = 0;
+      doc.querySelectorAll(ARTICLE).forEach(el => {
+        const n = pText(el);
+        if (n > best) { best = n; root = el; }
+      });
+      if (best < 200) root = null;
+    }
+    // … or one written with line breaks instead of paragraphs (judged by all
+    // its text; the 500 floor keeps little "related story" teasers out) …
+    const longestCandidate = floor => {
+      let pick = null, most = floor;
+      doc.querySelectorAll(ARTICLE).forEach(el => {
+        const n = el.textContent.trim().length;
+        if (n > most) { most = n; pick = el; }
+      });
+      return pick;
+    };
+    if (!root) root = longestCandidate(500);
+    // … or, on pages with no such markers, the box holding the most paragraphs.
+    if (!root) {
+      const byParent = new Map();
+      doc.querySelectorAll('p').forEach(p => {
+        const box = p.parentElement;
+        byParent.set(box, (byParent.get(box) || 0) + p.textContent.trim().length);
+      });
+      let best = 0;
+      byParent.forEach((n, box) => { if (n > best) { best = n; root = box; } });
+      if (best < 200) root = null;
+    }
+    // Last resort: any marked article at all beats the whole page.
+    root = root || longestCandidate(0) || doc.body;
+    if (!root) return { title, text: '' };
+
+    const keepTitles = document.getElementById('keepTitles').checked;
+    if (keepTitles) {
+      root.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+        h.textContent = h.textContent.replace(/\s+/g, ' ').trim().toUpperCase();
+      });
+    }
+
+    // Flatten to text: collapse source-code whitespace, then put line
+    // breaks back where the page's own blocks end.
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.parentElement.closest('pre')) n.nodeValue = n.nodeValue.replace(/\s+/g, ' ');
+    }
+    root.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
+    root.querySelectorAll('li').forEach(li => { li.prepend('• '); li.append('\n'); });
+    root.querySelectorAll('p,div,section,blockquote,h1,h2,h3,h4,h5,h6,tr,ul,ol,pre,figcaption,header,dd,dt')
+      .forEach(el => { el.prepend('\n\n'); el.append('\n\n'); });
+
+    let text = root.textContent
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\n{3,}/g, '\n\n');
+    if (document.getElementById('cleanWhitespace').checked) text = text.replace(/[ \t]+/g, ' ');
+    text = text.trim();
+
+    // The page's own headline usually repeats the title — drop it from the top.
+    const firstLine = text.split('\n', 1)[0].trim().toUpperCase();
+    if (firstLine.length > 15 && title.toUpperCase().startsWith(firstLine)) text = text.slice(text.indexOf('\n') + 1).trim();
+    return { title, text };
+  }
+
+  async function extractHtml(file) {
+    return htmlToText(await file.text(), file.name.replace(EXT, ''));
+  }
+
+  // MHTML is what Chrome on Android saves with ⋮ → Download: the page
+  // wrapped in an email-style envelope. Find the HTML part and unwrap it.
+  async function extractMhtml(file) {
+    const raw = await file.text();
+    const headEnd = raw.search(/\r?\n\r?\n/);
+    const head = raw.slice(0, headEnd < 0 ? 2000 : headEnd);
+    const bm = head.match(/boundary\s*=\s*"?([^";\r\n]+)"?/i);
+    if (!bm) throw new Error('Not a readable MHTML file');
+    const parts = raw.split('--' + bm[1].trim());
+    for (const part of parts) {
+      const sep = part.search(/\r?\n\r?\n/);
+      if (sep < 0) continue;
+      const ph = part.slice(0, sep);
+      if (!/content-type:\s*text\/html/i.test(ph)) continue;
+      let body = part.slice(sep).replace(/^\r?\n\r?\n/, '');
+      const cs = (ph.match(/charset\s*=\s*"?([\w-]+)/i) || [])[1] || 'utf-8';
+      const enc = ((ph.match(/content-transfer-encoding:\s*([\w-]+)/i) || [])[1] || '').toLowerCase();
+      let bytes;
+      if (enc === 'quoted-printable') {
+        body = body.replace(/=\r?\n/g, '');
+        const out = [];
+        for (let i = 0; i < body.length; i++) {
+          const c = body[i];
+          if (c === '=' && /^[0-9A-Fa-f]{2}$/.test(body.substr(i + 1, 2))) {
+            out.push(parseInt(body.substr(i + 1, 2), 16)); i += 2;
+          } else {
+            for (const b of new TextEncoder().encode(c)) out.push(b);
+          }
+        }
+        bytes = new Uint8Array(out);
+      } else if (enc === 'base64') {
+        const bin = atob(body.replace(/\s+/g, ''));
+        bytes = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+      }
+      let html;
+      try { html = bytes ? new TextDecoder(cs).decode(bytes) : body; }
+      catch (e) { html = new TextDecoder('utf-8').decode(bytes); }
+      return htmlToText(html, file.name.replace(EXT, ''));
+    }
+    throw new Error('No web page found inside MHTML');
+  }
+
   // ── Dispatcher ─────────────────────────────────────────────────
   async function extractText(file) {
     if (/\.epub$/i.test(file.name)) return extractEpub(file);
@@ -656,6 +815,8 @@
     if (/\.mobi$/i.test(file.name)) return extractMobi(file);
     if (/\.csv$/i.test(file.name))  return extractCsv(file);
     if (/\.txt$/i.test(file.name))  return extractTxt(file);
+    if (/\.html?$/i.test(file.name))  return extractHtml(file);
+    if (/\.mhtml?$/i.test(file.name)) return extractMhtml(file);
     throw new Error('Unsupported file type');
   }
 
@@ -672,9 +833,11 @@
       if (item) { item.className = 'file-item processing'; item.querySelector('.file-status').textContent = 'WORKING...'; }
 
       try {
-        const text = await extractText(f);
+        const got = await extractText(f);
+        const page = typeof got === 'string' ? null : got;
+        const text = page ? page.text : got;
         if (!text || !text.trim()) throw new Error('No text found in file');
-        results[f.name] = { ok: true, text };
+        results[f.name] = { ok: true, text, title: page ? page.title : null };
         if (item) { item.className = 'file-item done'; item.querySelector('.file-status').textContent = '✓ DONE'; }
       } catch(e) {
         results[f.name] = { ok: false, error: e.message };
@@ -691,34 +854,73 @@
     updateDownloadLabel();
   });
 
-  function updateDownloadLabel() {
-    // Count total output files (accounting for splits)
-    let totalOutputFiles = 0;
-    Object.entries(results).forEach(([name, r]) => {
-      if (!r.ok) return;
-      const parts = splitText(r.text);
-      totalOutputFiles += parts.length;
+  function dateStamp() {
+    const d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0');
+  }
+
+  // Every file to hand back, in the order the files were added.
+  // Web pages get their title on top. With "Combine small files" ticked,
+  // anything under ~300 KB is packed together, each one starting with a
+  // ===== TITLE ===== line; big books still split into their own parts.
+  function buildOutputs() {
+    const combine = document.getElementById('combineSmall').checked;
+    const enc = new TextEncoder();
+    const outputs = [];
+    const packs = [];
+    let pack = null;
+
+    files.forEach(f => {
+      const r = results[f.name];
+      if (!r || !r.ok) return;
+      const baseName = f.name.replace(EXT, '');
+      const own = r.title ? r.title + '\n\n' + r.text : r.text;
+      const block = '===== ' + (r.title || baseName).toUpperCase() + ' =====\n\n' + r.text + '\n\n\n';
+      const size = enc.encode(block).length;
+
+      if (combine && size < SPLIT_BYTES) {
+        if (!pack || pack.size + size > SPLIT_BYTES) {
+          pack = { size: 0, blocks: [], names: [], owns: [] };
+          packs.push(pack);
+          outputs.push(pack); // placeholder keeps the order
+        }
+        pack.size += size;
+        pack.blocks.push(block);
+        pack.names.push(baseName);
+        pack.owns.push(own);
+        return;
+      }
+      const parts = splitText(own);
+      if (parts.length === 1) outputs.push({ name: baseName + '.txt', text: parts[0] });
+      else parts.forEach((part, idx) => outputs.push({ name: `${baseName}_part${idx + 1}.txt`, text: part }));
     });
+
+    const multiPacks = packs.filter(pk => pk.blocks.length > 1).length;
+    let n = 0;
+    return outputs.map(o => {
+      if (!o.blocks) return o;
+      if (o.blocks.length === 1) return { name: o.names[0] + '.txt', text: o.owns[0] };
+      n++;
+      const suffix = multiPacks > 1 ? '_part' + n : '';
+      return { name: 'combined_' + dateStamp() + suffix + '.txt', text: o.blocks.join('').trim() };
+    });
+  }
+
+  function updateDownloadLabel() {
+    const totalOutputFiles = buildOutputs().length;
     downloadBtn.textContent = totalOutputFiles > 2
       ? 'Download All as ZIP'
       : totalOutputFiles === 1 ? 'Download TXT' : 'Download Files';
   }
 
+  document.getElementById('combineSmall').addEventListener('change', () => {
+    if (Object.values(results).some(r => r.ok)) updateDownloadLabel();
+  });
+
   downloadBtn.addEventListener('click', async () => {
-    // Collect all output file entries
-    const outputFiles = [];
-    Object.entries(results).forEach(([name, r]) => {
-      if (!r.ok) return;
-      const baseName = name.replace(/\.(epub|pdf|mobi|csv|txt)$/i, '');
-      const parts = splitText(r.text);
-      if (parts.length === 1) {
-        outputFiles.push({ name: baseName + '.txt', text: parts[0] });
-      } else {
-        parts.forEach((part, idx) => {
-          outputFiles.push({ name: `${baseName}_part${idx + 1}.txt`, text: part });
-        });
-      }
-    });
+    const outputFiles = buildOutputs();
 
     if (outputFiles.length === 0) return;
 
@@ -743,14 +945,10 @@
       const sourceBooks = Object.entries(results).filter(([,r]) => r.ok);
       let zipName;
       if (sourceBooks.length === 1) {
-        const baseName = sourceBooks[0][0].replace(/\.(epub|pdf|mobi|csv|txt)$/i, '');
+        const baseName = sourceBooks[0][0].replace(EXT, '');
         zipName = baseName + '.zip';
       } else {
-        const d = new Date();
-        const stamp = d.getFullYear() + '-' +
-          String(d.getMonth()+1).padStart(2,'0') + '-' +
-          String(d.getDate()).padStart(2,'0');
-        zipName = 'converted_' + stamp + '.zip';
+        zipName = 'converted_' + dateStamp() + '.zip';
       }
       a.download = zipName;
       a.click();

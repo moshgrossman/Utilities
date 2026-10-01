@@ -12,7 +12,7 @@ the one-time switch-on).
 
 | Tool | Lives in | Live address | Version |
 |---|---|---|---|
-| Bulk → TXT Converter — EPUB/PDF/MOBI/CSV → plain `.txt`, split into ~300 KB parts | `converter/` | `/Utilities/converter/` | 3.4 |
+| Bulk → TXT Converter — EPUB/PDF/MOBI/CSV/HTML/MHTML → plain `.txt`, split into ~300 KB parts (or small files combined up to ~300 KB). Web pages keep only the article text — see `converter/how-to-use-converter.txt` | `converter/` | `/Utilities/converter/` | 3.5 |
 | Audio Finder — pulls audio links out of a Chrome network log | `audio-finder/` | `/Utilities/audio-finder/` | 1.4 |
 | Form Filler — flat PDF / Word doc → fillable form | `form-filler/` | `/Utilities/form-filler/` | 1.2 |
 | Launcher — the front page listing the tools | `home/` | `/Utilities/home/` | 1.4 |

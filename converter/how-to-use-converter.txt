@@ -1,0 +1,62 @@
+BULK TO TXT CONVERTER - HOW TO USE (version 3.5)
+
+Takes about 2 minutes. You need: the files you want to turn into text, in your Downloads folder.
+
+
+WHAT IT DOES
+
+Turns books (EPUB, PDF, MOBI), spreadsheets (CSV) and saved web pages (HTML, MHTML) into plain .txt files.
+
+For web pages it keeps only the article or story. Ads, menus, share buttons, "related stories", comments and pictures are left out.
+
+Everything happens on your tablet. Nothing is uploaded.
+
+
+STEP 1 - SAVE THE WEB PAGES (skip this for books)
+
+Any website: open the page in Chrome, tap the three dots, then tap the Download arrow at the top. Chrome saves the page as an .mhtml file in Downloads.
+
+If you don't see the .mhtml file in Downloads afterwards, open Chrome's three-dots menu, then Downloads, and check it is listed there.
+
+AO3 (Archive of Our Own): on the story page, tap Download, then HTML (or EPUB). This gives the whole story, all chapters, in one file. That is better than saving the page.
+
+fanfiction.net: each chapter is its own page, so save each chapter with Chrome's Download arrow as above.
+
+
+STEP 2 - OPEN THE CONVERTER
+
+Open the Converter app from your home screen (or moshgrossman.github.io/Utilities/converter/ in Chrome).
+
+At the top you should see "v3.5". If you see v3.4, close the app fully and open it again.
+
+
+STEP 3 - PICK THE FILES
+
+Tap the big box and pick all the files at once.
+
+You should see each file listed as QUEUED.
+
+
+STEP 4 - CHOOSE "COMBINE" IF YOU WANT FEWER FILES
+
+Tick "Combine small files (~300 KB each)" to join small files together.
+
+Example: 48 articles come out as 1 or 2 files instead of 48. Each article starts with a line like ===== ARTICLE TITLE ===== so you can see where it begins.
+
+Big books are never combined. They still split into ~300 KB parts on their own.
+
+Leave it unticked to get one .txt per file, as before.
+
+
+STEP 5 - CONVERT AND DOWNLOAD
+
+Tap Convert All. Each file turns green with DONE.
+
+If one turns red with ERROR, it had no readable text (for example a scanned PDF). The others still work.
+
+Tap Download. One or two files download directly. Three or more come as a single .zip. In My Files, tap the .zip and choose Extract.
+
+
+IF A WEB PAGE COMES OUT WRONG
+
+If a page comes out with leftover menu text, or with part of the story missing, send Claude a screenshot of the .txt and the web address. Each website is built differently, and a fix for one site is usually small.
