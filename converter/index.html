@@ -706,6 +706,17 @@
       });
       if (best < 200) root = null;
     }
+    // … or one written with line breaks instead of paragraphs (judged by all
+    // its text; the 500 floor keeps little "related story" teasers out) …
+    const longestCandidate = floor => {
+      let pick = null, most = floor;
+      doc.querySelectorAll(ARTICLE).forEach(el => {
+        const n = el.textContent.trim().length;
+        if (n > most) { most = n; pick = el; }
+      });
+      return pick;
+    };
+    if (!root) root = longestCandidate(500);
     // … or, on pages with no such markers, the box holding the most paragraphs.
     if (!root) {
       const byParent = new Map();
@@ -717,7 +728,8 @@
       byParent.forEach((n, box) => { if (n > best) { best = n; root = box; } });
       if (best < 200) root = null;
     }
-    root = root || doc.body;
+    // Last resort: any marked article at all beats the whole page.
+    root = root || longestCandidate(0) || doc.body;
     if (!root) return { title, text: '' };
 
     const keepTitles = document.getElementById('keepTitles').checked;
