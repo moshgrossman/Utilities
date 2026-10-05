@@ -1,6 +1,6 @@
 DAYCARE FORMS - HOW TO USE IT
 
-Version 1.0
+Version 1.1
 
 
 WHAT IT DOES
@@ -37,6 +37,8 @@ You should see a dark page titled "Daycare Forms", with a yellow "+ New child" b
 
 If Chrome offers "Install app", say yes. It then opens like an app and works even with no internet.
 
+If the page does not load (for example, GitHub is having a bad day), use the single-file copy instead: daycare-forms-offline.html. Download it once and open it from your Downloads in Chrome. It needs no internet at all. Its saved children are kept separately from the web page's, so move them with "Save backup" and "Load backup".
+
 
 STEP 2 - YOUR DAYCARE DETAILS (ONCE ONLY)
 
@@ -59,6 +61,10 @@ Parent B: "Same address and home phone as Parent A" is ticked already, so you on
 
 Care: tap the days the child comes. Times are copied from your opening hours. Pick the first day. "Agreement ends" fills itself in as August 31st.
 
+"Date of signing" is today's date already. It goes on the "Date" lines next to the signatures. Change it if the forms will be signed on another day.
+
+Names, streets and cities typed all in small letters get capital letters when you move to the next box ("montreal" becomes "Montréal"). Picking Mother for one parent makes the other one Father.
+
 Contribution form questions: the usual answers (Parent A signs, Canadian citizen, no social assistance, no other daycare) are already selected. Tap the other answer only if it is different.
 
 The Ministère contract (5 pages) is off. Tick it only for the rare family that needs it.
@@ -72,7 +78,7 @@ A PDF named "Forms - (child's name).pdf" lands in your Downloads.
 
 A message under the button tells you if anything important was left blank (for example, a missing SIN). It still makes the forms. The blank boxes just print empty.
 
-Print it double-sided. Signatures and dates are left blank for signing.
+Print it double-sided. Signatures are left blank for signing. The payment amounts and "cheques payable to" are left blank too.
 
 To print the forms again later: on the main screen, tap "Make forms" next to the child.
 
@@ -92,7 +98,7 @@ STEP 6 - WHEN A CHILD LEAVES
 
 On the main screen, tap "Child left" next to the child.
 
-Pick their last day, and tap "Make Attestation".
+Pick their last day. "Date of the Attestation" is today already. Tap "Make Attestation".
 
 The Attestation downloads (3 copies: parent, you, the office). The day counts are left blank, as usual.
 

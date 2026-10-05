@@ -217,11 +217,9 @@
       p2.centre(c.depart, cols2[i], cols2[i + 1], 616, 9);
     });
 
-    if (c.contribution !== 'exempt' && nDays) {
-      const rate = parseFloat(String(S.rate).replace(',', '.'));
-      if (isFinite(rate)) p2.centre(money(rate * nDays), 53.1, 91.7, 573.7, 8);
-    }
-    p2.at(S.chequesTo || fullName(S.rsge), 212, 561, 124);
+    // Payment amounts and "cheques payable to" are left blank on purpose (Moshe's call, v1.1).
+    p2.centre(isoDate(c.signDate), 19.8, 151.8, 144, 10);   // Date line by the RSGE signature
+    p2.centre(isoDate(c.signDate), 19.8, 151.8, 90.5, 10);  // Date line by the parent signature
     p2.centre(isoDate(c.startDate), 166.5, 249.1, 212.5, 9);
     p2.centre(isoDate(c.endDate), 262.1, 333.8, 212.5, 9);
   }
@@ -260,13 +258,12 @@
       f.text('S3.1_Besoin_Garde_' + dayKey[i] + '_De', c.arrive);
       f.text('S3.1_Besoin_Garde_' + dayKey[i] + '_A', c.depart);
     });
-    const nDays = (c.days || []).filter(Boolean).length;
-    const rate = parseFloat(String(S.rate).replace(',', '.'));
     if (c.contribution === 'exempt') f.check('S4.1_Exemption_Paiement');
-    else if (nDays && isFinite(rate)) { f.pick('S4.2_Type_Versement', 0); f.text('S4.2_Montant_Versement', (rate * nDays).toFixed(2).replace('.', ',')); }
+    // Payment frequency and amount are left blank, same as on the Entente BC.
     f.text('S4.1_Date-Debut_Prestation', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_1', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_2', isoDate(c.endDate));
+    ['S14_Date_Signature_1', 'S14_Date_Signature_2', 'S14_Date_Signature_3'].forEach(n => f.text(n, isoDate(c.signDate)));
     await flatten(doc, f);
   }
 
@@ -290,10 +287,11 @@
     f.text('S1_Nom_1', c.child.last); f.text('S1_Prenom_1', c.child.first);
     f.text('S1_Date_Naissance_1', isoDate(c.child.dob));
     f.text('S2_Date_journee_1', isoDate(c.startDate));
-    if (c.benefits === true) f.pick('S3_Prestation', 0);
+    if (c.benefits === true) { f.pick('S3_Prestation', 0); f.text('S31_Date_Signature', isoDate(c.signDate)); }
     if (c.benefits === false) f.pick('S3_Prestation', 1);
     if (c.prevContribution === true) f.pick('S4_Contribution', 0);
     if (c.prevContribution === false) f.pick('S4_Contribution', 1);
+    f.text('S5_Date_Signature', isoDate(c.signDate));
     // Page 3 — documents attached (the birth certificates and the agreement always go in).
     f.check('S5_Doc_1'); f.check('S5_Doc_2'); f.check('S5_Doc_6');
     if (c.citizen === false) {
@@ -364,6 +362,7 @@
     f.text('S4_2_Office1', S.bcName);
     f.text('S5_NomFamille1', r.last); f.text('S5_Prenom1', r.first);
     f.check('S4_Case2');
+    f.text('S5_DateAttestation1', comb(c.attestDate));
     await flatten(doc, f);
   }
 

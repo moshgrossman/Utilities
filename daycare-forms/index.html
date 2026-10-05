@@ -65,6 +65,7 @@
   }
   input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent2); }
   input[type=date] { color-scheme:dark; }
+  input[data-fmt=postal] { text-transform:uppercase; }   /* display only; the real tidy-up happens on blur */
   .seg { display:flex; flex-wrap:wrap; gap:6px; }
   .seg button { min-width:52px; }
   .seg button.on { background:var(--accent); color:#0f0f0f; border-color:var(--accent); font-weight:600; }
@@ -84,7 +85,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.0 · type it once, print every French form · nothing leaves this tablet</div>
+    <div class="subtitle">v1.1 · type it once, print every French form · nothing leaves this tablet</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -125,8 +126,8 @@
 
     <h3>Child</h3>
     <div class="grid">
-      <label class="f">First name<input type="text" data-k="child.first" autocomplete="off"></label>
-      <label class="f">Last name<input type="text" data-k="child.last" autocomplete="off"></label>
+      <label class="f">First name<input type="text" data-k="child.first" data-fmt="name" autocomplete="off"></label>
+      <label class="f">Last name<input type="text" data-k="child.last" data-fmt="name" autocomplete="off"></label>
       <label class="f">Date of birth<input type="date" data-k="child.dob"></label>
       <div class="f"><span style="font-size:0.8rem;color:var(--muted)">Sex</span>
         <div class="seg" data-seg="child.sex"><button type="button" data-v="M">Boy</button><button type="button" data-v="F">Girl</button></div></div>
@@ -150,6 +151,7 @@
       <label class="f">Departure time<input type="text" data-k="depart" placeholder="14:30"></label>
       <label class="f">First day<input type="date" data-k="startDate"></label>
       <label class="f">Agreement ends<input type="date" data-k="endDate"></label>
+      <label class="f">Date of signing (goes on the "Date" lines)<input type="date" data-k="signDate"></label>
     </div>
     <div class="q"><div class="qt">Space type</div>
       <div class="seg" data-seg="contribution"><button type="button" data-v="reduced">Reduced contribution ($/day)</button><button type="button" data-v="exempt">Exempt (pays nothing)</button></div></div>
@@ -196,11 +198,11 @@
 
     <h3>You (the RSGE)</h3>
     <div class="grid">
-      <label class="f">First name<input type="text" data-s="rsge.first"></label>
-      <label class="f">Last name<input type="text" data-s="rsge.last"></label>
-      <label class="f wide">Street address<input type="text" data-s="rsge.street" placeholder="755 Avenue ..."></label>
+      <label class="f">First name<input type="text" data-s="rsge.first" data-fmt="name"></label>
+      <label class="f">Last name<input type="text" data-s="rsge.last" data-fmt="name"></label>
+      <label class="f wide">Street address<input type="text" data-s="rsge.street" data-fmt="name" placeholder="755 Avenue ..."></label>
       <label class="f">Apt<input type="text" data-s="rsge.apt"></label>
-      <label class="f">City<input type="text" data-s="rsge.city" placeholder="Outremont"></label>
+      <label class="f">City<input type="text" data-s="rsge.city" data-fmt="city" placeholder="Outremont"></label>
       <label class="f">Postal code<input type="text" data-s="rsge.postal" data-fmt="postal"></label>
       <label class="f">Phone<input type="tel" data-s="rsge.phone" data-fmt="phone"></label>
       <label class="f">Cell<input type="tel" data-s="rsge.cell" data-fmt="phone"></label>
@@ -221,7 +223,6 @@
     <h3>Contract details (Entente pour garde)</h3>
     <div class="grid">
       <label class="f wide">Vacation closures<input type="text" data-s="vacation" placeholder="e.g. Deux semaines en août"></label>
-      <label class="f">Cheques payable to<input type="text" data-s="chequesTo" placeholder="(your name)"></label>
       <label class="f">Extra-hours rate<input type="text" data-s="overtimeRate" placeholder="e.g. 5 $"></label>
       <label class="f">…for each<input type="text" data-s="overtimeUnit" placeholder="e.g. 15 min"></label>
     </div>
@@ -266,8 +267,9 @@
   <!-- ================= CHILD LEFT ================= -->
   <section id="v-left" class="hidden">
     <h2 id="leftTitle">Child left</h2>
-    <p class="help">This makes the Attestation des services de garde fournis (3 copies: parent, you, the office), and moves the child to "Past children". The day counts stay blank, as usual.</p>
-    <div class="grid"><label class="f">Last day at the daycare<input type="date" id="leftDate"></label></div>
+    <p class="help">This makes the Attestation des services de garde fournis (3 copies: parent, you, the office), and moves the child to "Past children". The day counts stay blank, as usual. The signature stays blank for you to sign.</p>
+    <div class="grid"><label class="f">Last day at the daycare<input type="date" id="leftDate"></label>
+      <label class="f">Date of the Attestation<input type="date" id="attestDate"></label></div>
     <div id="leftStatus" class="status hidden"></div>
     <div class="sticky row">
       <button data-go="home">Cancel</button>
