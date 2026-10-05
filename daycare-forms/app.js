@@ -438,7 +438,9 @@
   $('#btnQuickAdd').addEventListener('click', () => {
     const v = id => FORMAT.name($('#' + id).value);
     const first = v('qChildFirst'), last = v('qChildLast');
-    if (!first && !last) { showStatus($('#qStatus'), "Type at least the child's name.", true); return; }
+    if (!first && !last) { showStatus($('#qStatus'), "Type the child's name.", true); return; }
+    // The parent's name goes on the sheet (the parent signs it), so it can't be skipped.
+    if (!v('qParentFirst') && !v('qParentLast')) { showStatus($('#qStatus'), "Type the parent's name too. It goes on the attendance sheet.", true); return; }
     const c = newChild(db.settings);
     c.child.first = first; c.child.last = last;
     c.parentA.first = v('qParentFirst'); c.parentA.last = v('qParentLast');
