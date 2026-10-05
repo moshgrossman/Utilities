@@ -1,10 +1,20 @@
-DAYCARE FORMS TOOL - PLAN (DRAFT 2)
+DAYCARE FORMS TOOL - PLAN (DRAFT 3)
 
 Type a child's details once. Get every French form back filled in, ready to print.
 
 Items marked [DEFAULT] are choices I made that you did not ask for.
 
-Items marked [QUESTION] still need your answer.
+All questions are answered.
+
+
+
+WHAT CHANGED SINCE DRAFT 2
+
+- Both contracts (items 2 and 3) are required for every child, so both are in the package.
+
+- The health form uses your English version (Fiche_IDENTIFICATION_MF_EN in Drive) instead of the French one.
+
+- The Attestation's days-of-care boxes are always left blank.
 
 
 
@@ -38,7 +48,7 @@ Registration package - filled in for the office:
 
 For the parents - not sent to the office:
 
-5. Fiche d'identification MF 2026 (2 pages: health, vaccines, food, nap, pick-up people, authorizations)
+5. Fiche d'identification - your English version (2 pages: health, vaccines, food, nap, pick-up people, authorizations)
 
 Recurring:
 
@@ -48,7 +58,7 @@ When a child leaves:
 
 7. Attestation des services de garde fournis 2026 (3 pages)
 
-[QUESTION] Items 2 and 3 are both contracts. The office sent both. Do they want both signed for every child, or only one? If only one, which?
+Items 2 and 3 are both contracts. Both are required for every child.
 
 
 
@@ -58,7 +68,7 @@ The parents fill this in themselves, by hand.
 
 [DEFAULT] The tool still fills in the top part from what you already typed: the child's name, date of birth, address, and the parents' names and phones. That leaves only the health, vaccine, food and nap parts for the parents.
 
-[QUESTION] You said "or somehow made easier". Here is my suggestion: print a small grey English line under each French heading on this one form (e.g. "Santé / Health", "Sieste / Nap"). Parents know what to write, and the office never sees this form, so the English does no harm. Yes or no?
+It uses your English translation (Fiche_IDENTIFICATION_MF_EN in Drive), so the parents can read every question.
 
 
 
@@ -114,7 +124,7 @@ WHEN A CHILD LEAVES
 
 14. The tool makes the Attestation des services de garde fournis, with the parent and child details filled in.
 
-[QUESTION] Section 3 of the Attestation asks for the number of days of care given this year. Should the tool leave those boxes blank for you to count, or work them out from the start date, end date and days per week? Working them out is easy, but it would not know about absences.
+Section 3 (number of days of care) is left blank, as you do today.
 
 15. The end date also goes on that child's last attendance sheet, and the child moves to a "Past children" list. [DEFAULT]
 
@@ -150,10 +160,6 @@ SECOND VERSION (PARENTS TYPE IT THEMSELVES) - LATER
 
 WHAT I STILL NEED FROM YOU
 
-- Both contracts, or just one? (items 2 and 3)
+- Any last edits
 
-- English helper lines on the health form: yes or no?
-
-- Attestation day counts: blank, or worked out?
-
-- Any edits to the rest
+- Your go-ahead to build it
