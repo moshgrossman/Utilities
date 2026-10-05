@@ -1,10 +1,18 @@
-DAYCARE FORMS TOOL - PLAN (DRAFT 3)
+DAYCARE FORMS TOOL - PLAN (DRAFT 4)
 
 Type a child's details once. Get every French form back filled in, ready to print.
 
 Items marked [DEFAULT] are choices I made that you did not ask for.
 
 All questions are answered.
+
+
+
+WHAT CHANGED SINCE DRAFT 3
+
+- The Ministère's Entente de services de garde éducatifs subventionnés (item 3) is no longer in the regular package. Most parents don't need it. It is a tick-box per child, off by default.
+
+- Everything prints on letter paper. Forms that come as A4 or legal size are shrunk to fit letter.
 
 
 
@@ -42,7 +50,7 @@ Registration package - filled in for the office:
 
 2. Entente pour garde BC 2026 (2 pages)
 
-3. Entente de services de garde éducatifs subventionnés (5 pages, the Ministère form)
+3. Entente de services de garde éducatifs subventionnés (5 pages, the Ministère form) - ONLY when ticked for that child. Off by default.
 
 4. Demande d'admissibilité à la contribution réduite 2026 (4 pages, the new PCR form)
 
@@ -58,7 +66,7 @@ When a child leaves:
 
 7. Attestation des services de garde fournis 2026 (3 pages)
 
-Items 2 and 3 are both contracts. Both are required for every child.
+Item 2 is in every package. Item 3 is added only when you tick "Add Ministère entente" for that child.
 
 
 
@@ -101,6 +109,8 @@ HOW IT WORKS (YOU TYPE THE INFORMATION)
    - Wherever a form ends on a front page, a blank page is added, so each form starts on a fresh sheet when printed double-sided.
 
    - Signature and date lines are left blank.
+
+   - Every page is letter size. Three forms don't come that way from the office: the Entente pour garde BC and the Fiche d'assiduité are A4, and the Ministère entente is legal size (8.5 x 14). Those are shrunk evenly to fit letter, with the answers shrinking along with them, so nothing shifts. A4 shrinks only slightly (about 6%). Legal shrinks more (about 22%), but stays readable.
 
 8. Print double-sided, have it signed, scan it. Same as today, minus the writing.
 
