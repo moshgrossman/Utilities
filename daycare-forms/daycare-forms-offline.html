@@ -806,6 +806,16 @@
     };
   }
 
+  // Children saved by an older version get any fields added since (e.g. the signing date).
+  function upgradeChild(c) {
+    const base = newChild(DEFAULT_SETTINGS);
+    delete base.id; delete base.created;
+    base.endDate = '';
+    const out = Object.assign(base, c);
+    if (!out.decisionDate) out.decisionDate = out.signDate;
+    return out;
+  }
+
   let db = { settings: clone(DEFAULT_SETTINGS), children: [] };
   let storageOK = true;
 
@@ -816,7 +826,7 @@
         const d = JSON.parse(raw);
         db.settings = Object.assign(clone(DEFAULT_SETTINGS), d.settings || {});
         db.settings.rsge = Object.assign(clone(DEFAULT_SETTINGS.rsge), (d.settings || {}).rsge || {});
-        db.children = Array.isArray(d.children) ? d.children : [];
+        db.children = Array.isArray(d.children) ? d.children.map(upgradeChild) : [];
       }
     } catch (e) { storageOK = false; }
   }
@@ -1230,6 +1240,7 @@
     statusEl = statusEl || $('#homeStatus');
     btn.disabled = true;
     try {
+      if (!c.attestDate) { c.attestDate = today(); save(); }
       const bytes = await DaycareForms.attestation(loadTemplate, db.settings, forForms(c));
       download(bytes, fileSafe('Attestation - ' + childName(c)) + '.pdf');
       showStatus(statusEl, 'Downloaded "Attestation - ' + childName(c) + '.pdf". ' + childName(c) + ' is now under "Past children". Remember: one copy to the parent, one to the office.');
@@ -1257,7 +1268,7 @@
       if (d.app !== 'daycare-forms' || !Array.isArray(d.children)) throw new Error('That file is not a Daycare Forms backup.');
       const n = d.children.length;
       if (!confirm('Replace what is on this tablet with the backup from ' + (d.saved || '').slice(0, 10) + ' (' + n + ' children)?')) return;
-      db = { settings: Object.assign(clone(DEFAULT_SETTINGS), d.settings || {}), children: d.children };
+      db = { settings: Object.assign(clone(DEFAULT_SETTINGS), d.settings || {}), children: d.children.map(upgradeChild) };
       save(); renderHome();
       showStatus($('#homeStatus'), 'Backup loaded: ' + n + ' children.');
     } catch (err) { showStatus($('#homeStatus'), err.message, true); }
