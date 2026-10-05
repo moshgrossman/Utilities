@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   const PDFLib = root.PDFLib || (typeof require !== 'undefined' ? require('./vendor/pdf-lib.min.js') : null);
-  const { PDFDocument, StandardFonts, PDFName, rgb } = PDFLib;
+  const { PDFDocument, StandardFonts, PDFName, PDFHexString, PDFObjectCopier, TextAlignment, rgb } = PDFLib;
 
   const LETTER = [612, 792];
   const INK = rgb(0.05, 0.1, 0.45);   // dark blue, so typed answers stand out from the printed form
@@ -76,28 +76,35 @@
 
   // ---------- drawing on flat (non-fillable) forms ----------
 
-  function writer(page, font) {
+  // On the flat forms every answer goes into a real typing box (and every choice
+  // into a real tick box), so the finished file can still be corrected by hand.
+  function writer(doc, page, font) {
+    const form = doc.getForm();
+    let n = 0;
+    const id = () => 'df_' + page.ref.objectNumber + '_' + (n++);
     // Text that would overflow its blank line is shrunk until it fits.
     function fit(text, size, maxW) {
       let sz = size;
-      while (maxW && sz > 5 && font.widthOfTextAtSize(text, sz) > maxW) sz -= 0.5;
+      while (text && maxW && sz > 5 && font.widthOfTextAtSize(text, sz) > maxW) sz -= 0.5;
       return sz;
     }
+    function box(text, x, y, w, size, align) {
+      text = s(text);
+      const sz = fit(text, size, w - 2);
+      const f = form.createTextField(id());
+      if (text) f.setText(text);
+      f.addToPage(page, { x, y: y - 2, width: w, height: size + 5, font, textColor: INK, borderWidth: 0, borderColor: undefined, backgroundColor: undefined });
+      f.setFontSize(sz);
+      if (align) f.setAlignment(align);
+    }
     return {
-      at(text, x, y, maxW, size = 10) {
-        text = s(text); if (!text) return;
-        const sz = fit(text, size, maxW);
-        page.drawText(text, { x, y, size: sz, font, color: INK });
-      },
-      centre(text, x0, x1, y, size = 10) {
-        text = s(text); if (!text) return;
-        const sz = fit(text, size, x1 - x0 - 2);
-        const w = font.widthOfTextAtSize(text, sz);
-        page.drawText(text, { x: (x0 + x1) / 2 - w / 2, y, size: sz, font, color: INK });
-      },
-      tick(cx, cy, size = 12) {
-        const w = font.widthOfTextAtSize('X', size);
-        page.drawText('X', { x: cx - w / 2, y: cy - size * 0.35, size, font, color: INK });
+      at(text, x, y, maxW, size = 10) { box(text, x, y, maxW || 120, size); },
+      centre(text, x0, x1, y, size = 10) { box(text, x0, y, x1 - x0, size, TextAlignment.Center); },
+      tick(cx, cy, size = 12, on = true) {
+        const f = form.createCheckBox(id());
+        const w = size * 0.95;
+        f.addToPage(page, { x: cx - w / 2, y: cy - w / 2, width: w, height: w, textColor: INK, borderWidth: 0, borderColor: undefined, backgroundColor: undefined });
+        if (on) f.check();
       },
     };
   }
@@ -138,10 +145,10 @@
     };
   }
 
-  async function flatten(doc, filler) {
+  // Draws the typed answers into the boxes; the boxes stay editable.
+  async function finish(doc) {
     const font = await doc.embedFont(StandardFonts.Helvetica);
-    try { filler.form.updateFieldAppearances(font); } catch (e) { /* appearances already present */ }
-    filler.form.flatten();
+    try { doc.getForm().updateFieldAppearances(font); } catch (e) { /* appearances already present */ }
   }
 
   // ---------- the forms ----------
@@ -149,10 +156,10 @@
   // Formulaire de renseignements MF 2026 — letter, 1 page, flat.
   async function fillRenseignements(doc, S, c) {
     const font = await doc.embedFont(StandardFonts.Helvetica);
-    const w = writer(doc.getPage(0), font);
+    const w = writer(doc, doc.getPage(0), font);
     w.at(fullName(S.rsge), 326, 655, 185);
     const col = (p, L) => {
-      if (!hasPerson(p)) return;
+      p = p || {};
       w.at(p.last, L.nom, 571.5, 165);
       w.at(p.first, L.prenom, 554.5, 150);
       w.at(join(p.street, p.apt ? 'app. ' + p.apt : ''), L.adresse, 538, 150);
@@ -174,14 +181,14 @@
     const st = dateParts(c.startDate);
     w.centre(st.d, 282.1, 304.7, 320.5); w.centre(st.m, 315.1, 337.7, 320.5); w.centre(st.y, 348.0, 370.7, 320.5, 9);
     const boxes = [146.5, 182.5, 218.5, 254.5, 283.3, 319.3, 355.3];
-    (c.days || []).forEach((on, i) => { if (on) w.tick(boxes[i], 190.3, 14); });
+    boxes.forEach((x, i) => w.tick(x, 190.3, 14, !!(c.days || [])[i]));
   }
 
   // Entente pour garde BC 2026 — A4, 2 pages, flat.
   async function fillEntenteBC(doc, S, c) {
     const font = await doc.embedFont(StandardFonts.Helvetica);
-    const p1 = writer(doc.getPage(0), font);
-    const p2 = writer(doc.getPage(1), font);
+    const p1 = writer(doc, doc.getPage(0), font);
+    const p2 = writer(doc, doc.getPage(1), font);
     const parent = payerOf(c);
     const block = (p, x) => {
       // x = { nom, prenom, adresse, ville, postal, tel, cell, autre } start positions, right edge per line
@@ -195,13 +202,13 @@
       p1.at(p.other || p.workTel, x.autre[0], 548, x.autre[1] - x.autre[0], 9);
     };
     block(S.rsge, { nom: [57, 199], prenom: [69.5, 200], adresse: [70.5, 196], ville: [57, 149], postal: [87.5, 169], tel: [107, 189], cell: [78.5, 176], autre: [60, 174] });
-    if (hasPerson(parent)) block(parent, { nom: [332.5, 475], prenom: [345, 476], adresse: [346, 472], ville: [332.5, 425], postal: [363, 444], tel: [383, 464], cell: [354, 452], autre: [336, 450] });
+    block(hasPerson(parent) ? parent : {}, { nom: [332.5, 475], prenom: [345, 476], adresse: [346, 472], ville: [332.5, 425], postal: [363, 444], tel: [383, 464], cell: [354, 452], autre: [336, 450] });
 
     p1.at(c.child.last, 99, 506, 152);
     p1.at(c.child.first, 346, 506, 147);
     p1.at(isoDate(c.child.dob), 111, 487, 142);
-    if (c.child.sex === 'M') p1.tick(419.9, 490.9, 11);
-    if (c.child.sex === 'F') p1.tick(463.4, 490.9, 11);
+    p1.tick(419.9, 490.9, 11, c.child.sex === 'M');
+    p1.tick(463.4, 490.9, 11, c.child.sex === 'F');
 
     const cols1 = [107.5, 174.6, 241.6, 308.6, 375.7, 442.7, 509.6, 576.7];
     (S.hours || []).forEach((h, i) => {
@@ -209,30 +216,34 @@
       p1.centre(h.close, cols1[i], cols1[i + 1], 338.7, 9);
     });
     p1.at(S.vacation, 25, 126, 545, 9);
-    if (S.claimClosure === true) p1.tick(51.4, 79.3, 12);
-    if (S.claimClosure === false) p1.tick(199.8, 79.4, 12);
+    p1.tick(51.4, 79.3, 12, S.claimClosure === true);
+    p1.tick(199.8, 79.4, 12, S.claimClosure === false);
 
     const nDays = (c.days || []).filter(Boolean).length;
-    if (nDays) p2.centre(String(nDays), 307, 329, 797.5);
-    if (c.contribution === 'exempt') p2.tick(27.4, 771.8, 12);
-    else { p2.tick(27.4, 788.8, 12); p2.centre(money(S.rate), 372.5, 411.1, 783.5, 9); }
+    p2.centre(nDays ? String(nDays) : '', 307, 329, 797.5);
+    p2.tick(27.4, 788.8, 12, c.contribution !== 'exempt');
+    p2.tick(27.4, 771.8, 12, c.contribution === 'exempt');
+    p2.centre(c.contribution !== 'exempt' ? money(S.rate) : '', 372.5, 411.1, 783.5, 9);
     p2.centre(S.overtimeRate, 51.3, 89.9, 726.5, 9);
     p2.centre(S.overtimeUnit, 149.4, 182.5, 726.5, 9);
 
     const cols2 = [112.5, 177.5, 242.4, 307.4, 372.3, 437.4, 502.3, 567.4];
-    (c.days || []).forEach((on, i) => {
-      if (!on) return;
-      p2.centre(c.arrive, cols2[i], cols2[i + 1], 632, 9);
-      p2.centre(c.depart, cols2[i], cols2[i + 1], 616, 9);
-    });
+    for (let i = 0; i < 7; i++) {
+      const on = !!(c.days || [])[i];
+      p2.centre(on ? c.arrive : '', cols2[i], cols2[i + 1], 632, 9);
+      p2.centre(on ? c.depart : '', cols2[i], cols2[i + 1], 616, 9);
+    }
 
     // Amount on the line for how often parents pay; "cheques payable to" stays blank (cash).
     const amt = paymentAmount(S, c);
-    if (amt != null && S.payFrequency === 'weekly') p2.centre(money(amt), 53.1, 91.7, 573.7, 8);
-    if (amt != null && S.payFrequency === 'biweekly') p2.centre(money(amt), 155.9, 199.9, 573.7, 8);
-    if (S.payMethod === 'cheque') p2.at(fullName(S.rsge), 212, 561, 124);
-    p2.centre(isoDate(c.signDate), 19.8, 151.8, 144, 10);   // Date line by the RSGE signature
-    p2.centre(isoDate(c.signDate), 19.8, 151.8, 90.5, 10);  // Date line by the parent signature
+    p2.centre(amt != null && S.payFrequency === 'weekly' ? money(amt) : '', 53.1, 91.7, 573.7, 8);
+    p2.centre(amt != null && S.payFrequency === 'biweekly' ? money(amt) : '', 155.9, 199.9, 573.7, 8);
+    p2.centre('', 306.9, 334.4, 573.7, 8);
+    p2.at(S.payMethod === 'cheque' ? fullName(S.rsge) : '', 212, 561, 124);
+    p2.centre(isoDate(c.signDate), 19.8, 151.8, 144, 10);   // Date and Lieu by the RSGE signature
+    p2.centre(c.signPlace, 196.8, 316.9, 144, 10);
+    p2.centre(isoDate(c.signDate), 19.8, 151.8, 90.5, 10);  // Date and Lieu by the parent signature
+    p2.centre(c.signPlace, 196.8, 316.9, 90.5, 10);
     p2.centre(isoDate(c.startDate), 166.5, 249.1, 212.5, 9);
     p2.centre(isoDate(c.endDate), 262.1, 333.8, 212.5, 9);
   }
@@ -284,7 +295,8 @@
     f.text('S8_Date_Frequentation_1', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_2', isoDate(c.endDate));
     ['S14_Date_Signature_1', 'S14_Date_Signature_2', 'S14_Date_Signature_3'].forEach(n => f.text(n, isoDate(c.signDate)));
-    await flatten(doc, f);
+    ['S14_Lieu_Signature_1', 'S14_Lieu_Signature_2', 'S14_Lieu_Signature_3'].forEach(n => f.text(n, c.signPlace));
+    await finish(doc);
   }
 
   // Demande d'admissibilité à la contribution réduite 2026 (Ministère) — letter, 4 pages, fillable.
@@ -331,7 +343,7 @@
     // social assistance the exemption answer follows the space type.
     f.pick('S6_Decision', 0);
     if (c.benefits === true) f.pick('S7_Paiement', c.contribution === 'exempt' ? 0 : 1);
-    await flatten(doc, f);
+    await finish(doc);
   }
 
   // Fiche d'identification — Moshe's English translation, letter, 2 pages, fillable.
@@ -357,17 +369,17 @@
       f.text('resp_work_' + row, p.workTel);
     });
     f.text('provider_name_ref', fullName(S.rsge));
-    await flatten(doc, f);
+    await finish(doc);
   }
 
   // Fiche d'assiduité 2026 — A4, 1 page, flat. Names and week dates only.
   async function fillAssiduite(doc, S, c, weekStart) {
     const font = await doc.embedFont(StandardFonts.Helvetica);
-    const w = writer(doc.getPage(0), font);
+    const w = writer(doc, doc.getPage(0), font);
     w.at(join(c.child.first, c.child.last), 150, 644, 400);
     w.at(fullName(payerOf(c)), 150, 626.5, 400);
     w.at(fullName(S.rsge), 150, 609, 400);
-    if (c.leftDate && c.leftDate <= addDays(weekStart, 13)) w.at(isoDate(c.leftDate), 150, 591.5, 400);
+    w.at(c.leftDate && c.leftDate <= addDays(weekStart, 13) ? isoDate(c.leftDate) : '', 150, 591.5, 400);
     w.centre(weekStart, 35.4, 117.6, 325.5, 9);
     w.centre(addDays(weekStart, 7), 35.4, 117.6, 308, 9);
   }
@@ -391,7 +403,7 @@
     f.text('S5_NomFamille1', r.last); f.text('S5_Prenom1', r.first);
     f.check('S4_Case2');
     f.text('S5_DateAttestation1', comb(c.attestDate));
-    await flatten(doc, f);
+    await finish(doc);
   }
 
   // ---------- assembling the printable file ----------
@@ -403,26 +415,57 @@
   // Copies every page of each filled form onto letter paper (shrinking A4 and
   // legal pages evenly to fit), and adds a blank page after any form that ends
   // on a front side, so double-sided printing never puts two forms on one sheet.
+  // The typing boxes come along and stay editable: each form's boxes get a
+  // prefix (f1_, f2_…) so two copies of the same form never share a box.
   async function assemble(docs) {
     const out = await PDFDocument.create();
+    const acro = out.catalog.getOrCreateAcroForm();
+    const DR = PDFName.of('DR'), FONT = PDFName.of('Font'), T = PDFName.of('T'), PARENT = PDFName.of('Parent'), ANNOTS = PDFName.of('Annots');
+    const outFonts = out.context.obj({});
+    acro.dict.set(DR, out.context.obj({ Font: outFonts }));
     for (let k = 0; k < docs.length; k++) {
       const src = docs[k];
-      // The output is for printing: drop leftover annotations (flattening can
-      // leave dangling links to the removed form boxes).
-      src.getPages().forEach(p => p.node.delete(PDFName.of('Annots')));
+      // Fonts the boxes use when someone types into them later.
+      const srcAcro = src.catalog.getAcroForm();
+      const srcDR = srcAcro && srcAcro.dict.lookup(DR);
+      const srcFonts = srcDR && srcDR.lookup(FONT);
+      if (srcFonts) {
+        const copier = PDFObjectCopier.for(src.context, out.context);
+        srcFonts.entries().forEach(([name, ref]) => { if (!outFonts.has(name)) outFonts.set(name, copier.copy(ref)); });
+      }
       const copied = await out.copyPages(src, src.getPageIndices());
+      const roots = new Set();
       copied.forEach(page => {
         out.addPage(page);
         const box = page.getMediaBox();
         const sc = Math.min(LETTER[0] / box.width, LETTER[1] / box.height, 1);
-        if (box.x || box.y) page.translateContent(-box.x, -box.y);
-        if (sc < 1) page.scaleContent(sc, sc);
-        page.translateContent((LETTER[0] - box.width * sc) / 2, (LETTER[1] - box.height * sc) / 2);
+        const dx = (LETTER[0] - box.width * sc) / 2 - box.x * sc, dy = (LETTER[1] - box.height * sc) / 2 - box.y * sc;
+        if (sc < 1) page.scale(sc, sc);   // content, boxes and page size together
+        page.translateContent(dx, dy);
+        const annots = page.node.lookup(ANNOTS);
+        if (annots) {
+          annots.asArray().forEach(ref => {
+            const a = out.context.lookup(ref);
+            if (!a || !a.lookup) return;
+            const r = a.lookup(PDFName.of('Rect'));
+            if (r) { const v = r.asArray().map(n => n.asNumber()); a.set(PDFName.of('Rect'), out.context.obj([v[0] + dx, v[1] + dy, v[2] + dx, v[3] + dy])); }
+            if (a.lookup(PDFName.of('Subtype')) !== PDFName.of('Widget')) return;
+            let rootRef = ref, node = a;
+            while (node.get(PARENT)) { rootRef = node.get(PARENT); node = out.context.lookup(rootRef); }
+            roots.add(rootRef);
+          });
+        }
         page.setMediaBox(0, 0, LETTER[0], LETTER[1]);
         page.setCropBox(0, 0, LETTER[0], LETTER[1]);
         page.setTrimBox(0, 0, LETTER[0], LETTER[1]);
         page.setBleedBox(0, 0, LETTER[0], LETTER[1]);
         page.setArtBox(0, 0, LETTER[0], LETTER[1]);
+      });
+      roots.forEach(ref => {
+        const field = out.context.lookup(ref);
+        const t = field.lookup(T);
+        field.set(T, PDFHexString.fromText('f' + (k + 1) + '_' + (t ? t.decodeText() : 'box')));
+        acro.addField(ref);
       });
       if (copied.length % 2 === 1 && k < docs.length - 1) out.addPage(LETTER);
     }

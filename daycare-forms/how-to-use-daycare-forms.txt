@@ -1,6 +1,6 @@
 DAYCARE FORMS - HOW TO USE IT
 
-Version 1.2
+Version 1.3
 
 
 WHAT IT DOES
@@ -63,7 +63,7 @@ Care: tap the days the child comes. Times are copied from your opening hours. Pi
 
 "Date on the office page" goes on the last page of the contribution form ("Réservé à l'administration", which you fill in yourself). It copies the signing date. Change it only if it should be different. That page also comes with "Oui, la demande est acceptée" ticked, so you only sign it. For families on social assistance, "Le parent est-il exempté?" is ticked to match the space type (Exempt = Oui, Reduced = Non).
 
-"Date of signing" is today's date already. It goes on the "Date" lines next to the signatures. Change it if the forms will be signed on another day.
+"Date of signing" is today's date already. It goes on the "Date" lines next to the signatures. Change it if the forms will be signed on another day. "Place of signing" is your city already; it goes on the "Lieu" lines next to the dates.
 
 Names, streets and cities typed all in small letters get capital letters when you move to the next box ("montreal" becomes "Montréal"). Parent A starts as the Mother. Picking Mother for one parent makes the other one Father.
 
@@ -79,6 +79,8 @@ Tap "Save and make forms".
 A PDF named "Forms - (child's name).pdf" lands in your Downloads.
 
 A message under the button tells you if anything important was left blank (for example, a missing SIN). It still makes the forms. The blank boxes just print empty.
+
+The PDF stays fillable: every answer sits in a typing box, so you can fix a typo or fill a blank straight in the PDF (for example in Chrome or Adobe) without making the forms again. Tick boxes can be ticked or unticked the same way.
 
 Print it double-sided. Signatures are left blank for signing. The amount for every two weeks (rate x days x 2) is filled in, with cash as the way to pay. "Cheques payable to" stays blank. To change how often parents pay or how, see "Daycare settings".
 

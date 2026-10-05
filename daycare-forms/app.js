@@ -1,7 +1,7 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.2';
+  const VERSION = '1.3';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -34,7 +34,7 @@
       days: [true, true, true, true, true, false, false],
       arrive: /ferm/i.test(mon.open || '') ? '' : (mon.open || ''), depart: mon.close || '',
       startDate: '', endDate: '', contribution: 'reduced', includeMinistere: false,
-      signDate: today(), decisionDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
+      signDate: today(), signPlace: (S.rsge && S.rsge.city) || '', decisionDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
     };
   }
 
@@ -312,6 +312,7 @@
   // What the forms will actually use (Parent B borrowing Parent A's address, etc.).
   function forForms(c) {
     const out = clone(c);
+    if (!out.signPlace) out.signPlace = db.settings.rsge.city || '';
     if (c.noParentB) out.parentB = emptyParent('');
     else if (c.sameAddr !== false) ['street', 'apt', 'city', 'postal', 'homeTel'].forEach(k => { out.parentB[k] = c.parentA[k]; });
     return out;
