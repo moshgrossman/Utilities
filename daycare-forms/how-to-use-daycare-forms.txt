@@ -61,7 +61,7 @@ Parent B: "Same address and home phone as Parent A" is ticked already, so you on
 
 Care: tap the days the child comes. Times are copied from your opening hours. Pick the first day. "Agreement ends" is normally left empty.
 
-"Date on the office page" goes on the last page of the contribution form (the part for the office). It copies the signing date. Change it only if it should be different.
+"Date on the office page" goes on the last page of the contribution form ("Réservé à l'administration", which you fill in yourself). It copies the signing date. Change it only if it should be different. That page also comes with "Oui, la demande est acceptée" ticked, so you only sign it. For families on social assistance, "Le parent est-il exempté?" is ticked to match the space type (Exempt = Oui, Reduced = Non).
 
 "Date of signing" is today's date already. It goes on the "Date" lines next to the signatures. Change it if the forms will be signed on another day.
 

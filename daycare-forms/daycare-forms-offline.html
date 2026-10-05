@@ -634,6 +634,10 @@
     f.text('S7_Date_Deb_Garde_1', isoDate(c.startDate));
     f.text('S7_Date_Decision_1', isoDate(c.decisionDate || c.signDate));
     f.text('S7_Date_Signature', isoDate(c.decisionDate || c.signDate));
+    // The RSGE fills this page herself: the request is accepted, and for families on
+    // social assistance the exemption answer follows the space type.
+    f.pick('S6_Decision', 0);
+    if (c.benefits === true) f.pick('S7_Paiement', c.contribution === 'exempt' ? 0 : 1);
     await flatten(doc, f);
   }
 
