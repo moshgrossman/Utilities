@@ -1,0 +1,175 @@
+DAYCARE FORMS TOOL - PLAN (DRAFT 4 - BUILT AS v1.0)
+
+Type a child's details once. Get every French form back filled in, ready to print.
+
+Items marked [DEFAULT] are choices I made that you did not ask for.
+
+All questions are answered.
+
+
+
+WHAT CHANGED SINCE DRAFT 3
+
+- The Ministère's Entente de services de garde éducatifs subventionnés (item 3) is no longer in the regular package. Most parents don't need it. It is a tick-box per child, off by default.
+
+- Everything prints on letter paper. Forms that come as A4 or legal size are shrunk to fit letter.
+
+
+
+WHAT CHANGED SINCE DRAFT 2
+
+- Both contracts (items 2 and 3) are required for every child, so both are in the package.
+
+- The health form uses your English version (Fiche_IDENTIFICATION_MF_EN in Drive) instead of the French one.
+
+- The Attestation's days-of-care boxes are always left blank.
+
+
+
+WHAT CHANGED SINCE DRAFT 1
+
+- The forms are now the 2026 versions from the office's email of Aug 5, 2026 ("TOUS LES DOCUMENTS, ALL THE DOCUMENTS"). All 7 links opened fine.
+
+- The health form is not sent to the office. It is printed for the parents to fill in themselves.
+
+- Attendance sheets: names and dates only. Presence and absence stay blank, for you to write by hand.
+
+- The Attestation (when a child leaves) is in.
+
+- The printed file is laid out for double-sided printing, so two forms never end up on the same sheet of paper.
+
+- Free-text health sentences are no longer a problem. The parents write those by hand.
+
+
+
+THE FORMS (ALL FRENCH, 2026 VERSIONS FROM THE OFFICE)
+
+Registration package - filled in for the office:
+
+1. Formulaire de renseignements MF 2026 (1 page)
+
+2. Entente pour garde BC 2026 (2 pages)
+
+3. Entente de services de garde éducatifs subventionnés (5 pages, the Ministère form) - ONLY when ticked for that child. Off by default.
+
+4. Demande d'admissibilité à la contribution réduite 2026 (4 pages, the new PCR form)
+
+For the parents - not sent to the office:
+
+5. Fiche d'identification - your English version (2 pages: health, vaccines, food, nap, pick-up people, authorizations)
+
+Recurring:
+
+6. Fiche d'assiduité 2026 (attendance, every two weeks)
+
+When a child leaves:
+
+7. Attestation des services de garde fournis 2026 (3 pages)
+
+Item 2 is in every package. Item 3 is added only when you tick "Add Ministère entente" for that child.
+
+
+
+THE HEALTH FORM (FICHE D'IDENTIFICATION)
+
+The parents fill this in themselves, by hand.
+
+[DEFAULT] The tool still fills in the top part from what you already typed: the child's name, date of birth, address, and the parents' names and phones. That leaves only the health, vaccine, food and nap parts for the parents.
+
+It uses your English translation (Fiche_IDENTIFICATION_MF_EN in Drive), so the parents can read every question.
+
+
+
+HOW IT WORKS (YOU TYPE THE INFORMATION)
+
+1. Open the tool in Chrome. It is a new page in your Utilities collection, next to Form Filler. [DEFAULT]
+
+2. You see a list of your children and a big "New child" button.
+
+3. Tap "New child". One screen opens, in English, in short sections:
+
+   - Child: name, date of birth, sex
+
+   - Parent A and Parent B: name, address, phones, email, SIN
+
+   - Schedule: days, arrival/departure times, first day, end date
+
+   - Contribution: reduced rate or exempt, Canadian citizen yes/no
+
+4. Anything typed once is never asked twice. Example: Parent B's address is copied from Parent A, with one tap to change it.
+
+5. Yes/no questions and choices are taps. The tool writes the French word on the form (Oui/Non, M/F, Lundi...).
+
+6. Your daycare's details are already on every form: Gitty Roth, 755 Querbes, the phones, hours 9:30-2:30, $9.65, BC du Parc, division 10586. A "Daycare settings" page lets you change them when the rate or hours change. [DEFAULT]
+
+7. Tap "Make forms". One PDF downloads.
+
+   - The registration forms come first, in the order the office lists them, then the health form for the parents. [DEFAULT]
+
+   - Wherever a form ends on a front page, a blank page is added, so each form starts on a fresh sheet when printed double-sided.
+
+   - Signature and date lines are left blank.
+
+   - Every page is letter size. Three forms don't come that way from the office: the Entente pour garde BC and the Fiche d'assiduité are A4, and the Ministère entente is legal size (8.5 x 14). Those are shrunk evenly to fit letter, with the answers shrinking along with them, so nothing shifts. A4 shrinks only slightly (about 6%). Legal shrinks more (about 22%), but stays readable.
+
+8. Print double-sided, have it signed, scan it. Same as today, minus the writing.
+
+
+
+ATTENDANCE SHEETS
+
+9. On the main screen, tap "Attendance sheets".
+
+10. Choose the two-week period. The "Semaine débutant le" dates fill in automatically.
+
+11. One sheet per current child, with the coordinating office, child name, parent name and your name filled in. The day boxes and the payment section stay blank for you to write by hand.
+
+12. [DEFAULT] One combined PDF for all the children, one sheet each.
+
+
+
+WHEN A CHILD LEAVES
+
+13. Tap the child, then "Child left", and enter the last day.
+
+14. The tool makes the Attestation des services de garde fournis, with the parent and child details filled in.
+
+Section 3 (number of days of care) is left blank, as you do today.
+
+15. The end date also goes on that child's last attendance sheet, and the child moves to a "Past children" list. [DEFAULT]
+
+
+
+WHAT IS SAVED, AND WHERE
+
+16. The children's information is saved on the tablet only, in Chrome. Nothing is uploaded anywhere. That matters: these forms hold SIN numbers.
+
+17. Because Chrome can lose saved data if its storage is cleared, a "Save backup" button downloads one file, and "Load backup" restores it. [DEFAULT]
+
+18. "Delete child" really deletes.
+
+
+
+WHEN THE OFFICE SENDS NEW VERSIONS
+
+The tool knows exactly where each box sits on each form. If the office changes a form, that one form has to be set up again. That takes about one short session, not a new tool.
+
+[DEFAULT] The tool shows the year of each form version on the settings page, so you can tell at a glance whether it matches what the office last sent.
+
+
+
+SECOND VERSION (PARENTS TYPE IT THEMSELVES) - LATER
+
+19. You send the parent a link. They fill the same English questions on their phone.
+
+20. Their answers come back to you as one small file by email or WhatsApp. You open it in the tool, and "Make forms" works as usual.
+
+21. This gets its own plan once the first version is in use.
+
+
+
+WHAT I STILL NEED FROM YOU
+
+- Any last edits
+
+- Your go-ahead to build it
