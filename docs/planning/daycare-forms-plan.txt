@@ -1,0 +1,141 @@
+DAYCARE FORMS TOOL - PLAN (DRAFT 1)
+
+Type a child's details once. Get every French form back filled in, ready to print.
+
+This is a plan to edit, not a finished design. Reply with changes.
+
+Items marked [DEFAULT] are choices I made that you did not ask for.
+
+Items marked [QUESTION] need your answer before anything is built.
+
+
+
+WHAT THE TOOL COVERS
+
+These are the five forms in your current registration package. The office wants every one of them in French:
+
+1. Formulaire de renseignements (the CPE du Parc form, 1 page)
+
+2. Entente pour garde d'enfant en milieu familial (2 pages)
+
+3. Demande de contribution réduite ou d'exemption (the Ministère form, FO-0601, 4 pages)
+
+4. Fiche d'identification (2 pages)
+
+5. Fiche d'assiduité (the attendance sheet, sent every two weeks)
+
+The first four make up the registration package. Each child fills those in once.
+
+The fifth is the recurring one. It uses the saved information.
+
+
+
+WHERE THE FRENCH ORIGINALS COME FROM
+
+Fiche d'identification, Entente and Fiche d'assiduité: you already have the French versions in Google Drive.
+
+Demande de contribution réduite (FO-0601): I download the current French version from the Ministère website myself.
+
+Formulaire de renseignements: I only found your English copy. [QUESTION] Do you have the French original from the CPE? If not, I can rebuild it in French to match the English one.
+
+
+
+HOW IT WORKS - FIRST VERSION (YOU TYPE THE INFORMATION)
+
+1. Open the tool in Chrome. It is a new page in your Utilities collection, next to Form Filler. [DEFAULT]
+
+2. You see a list of your children (empty the first time) and a big "New child" button.
+
+3. Tap "New child". One screen opens, in English, split into short sections:
+
+   - Child: name, date of birth, sex, health card number, languages spoken at home
+
+   - Parent A and Parent B: name, address, phones, email, SIN
+
+   - People allowed to pick up the child
+
+   - Emergency contacts
+
+   - Health: special attention yes/no, explanation, doctor
+
+   - Vaccines (optional, can be left blank for the parent to fill in by hand)
+
+   - Food, nap, activities
+
+   - Schedule: days and arrival/departure times, first day, end date
+
+   - Contribution: reduced rate or exempt, Canadian citizen yes/no
+
+4. Anything typed once is never asked twice. Example: the child's address is copied from Parent A, with one tap to change it. The parent's name goes into all four forms automatically.
+
+5. Yes/no questions and choices are taps, not typing. The tool writes the French word on the form (Oui/Non, M/F, Lundi...).
+
+6. Your daycare's own details are already filled in on every form: Gitty Roth, the address, the phones, hours 9:30 to 2:30, $9.65, BC du Parc, division 10586. A small "Daycare settings" page lets you change them when the rate or hours change. [DEFAULT]
+
+7. Tap "Make forms". One PDF downloads with all four forms filled in, in French. Signature and date lines are left blank. [DEFAULT: one combined file. QUESTION: or one file per form?]
+
+8. Print it, have it signed, scan it. Same as today, minus the writing.
+
+
+
+SENTENCES THE PARENT WRITES (HEALTH, FOOD, NAP)
+
+Names and numbers don't need translating. Sentences like "allergic to peanuts" do.
+
+[QUESTION] Pick one:
+
+   a) You type those few lines in French yourself.
+
+   b) English is fine for those lines.
+
+   c) The tool offers a short list of ready-made French phrases (e.g. "Aucune allergie connue", "Sieste d'environ 1 heure") plus a free box.
+
+My recommendation: c. It covers most cases with no typing, and nothing needs an internet translation service.
+
+
+
+ATTENDANCE SHEETS (FICHE D'ASSIDUITÉ)
+
+9. On the main screen, tap "Attendance sheets".
+
+10. Choose the two-week period. The "Semaine débutant le" dates fill themselves in.
+
+11. One sheet per child is produced, with the coordinating office, child name, parent name and your name already filled in.
+
+[QUESTION] Should the tool fill in only the header, leaving the P/A boxes for you to write by hand, or should you also tap each day (Present / Absent / Closed) on screen and have it print filled in?
+
+When a child leaves, tap "Child left" and enter the end date. It goes on their last attendance sheet, and the child moves to a "Past children" list. [DEFAULT]
+
+[QUESTION] When a child leaves, the CPE also asks for the "Attestation des services de garde fournis". Should the tool fill that in too? It is in your Drive.
+
+
+
+WHAT IS SAVED, AND WHERE
+
+12. The child's information is saved on the tablet only, in Chrome. Nothing is uploaded anywhere. That matters here: these forms hold SIN and health card numbers.
+
+13. Because Chrome can lose saved data if its storage is cleared, there is a "Save backup" button that downloads one file, plus "Load backup" to restore it. [DEFAULT]
+
+14. "Delete child" really deletes.
+
+
+
+SECOND VERSION (PARENTS TYPE IT THEMSELVES) - LATER, NOT NOW
+
+15. You send the parent a link. They fill the same English questions on their phone.
+
+16. With no server involved, their answers come back to you as one small file by email or WhatsApp. You open it in the tool and everything appears, ready for "Make forms".
+
+17. I'll plan this one properly after the first version is working for you.
+
+
+
+WHAT I NEED FROM YOU
+
+- Your edits to this plan
+
+- Answers to the [QUESTION] items
+
+- The French Formulaire de renseignements, if you have it
+
+- Confirmation that the June 2025 Entente in your Drive is the current one
