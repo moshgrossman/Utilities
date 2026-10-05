@@ -15,7 +15,8 @@ the one-time switch-on).
 | Bulk → TXT Converter — EPUB/PDF/MOBI/CSV/HTML/MHTML → plain `.txt`, split into ~300 KB parts (or small files combined up to ~300 KB). Web pages keep only the article text — see `converter/how-to-use-converter.txt` | `converter/` | `/Utilities/converter/` | 3.5 |
 | Audio Finder — pulls audio links out of a Chrome network log | `audio-finder/` | `/Utilities/audio-finder/` | 1.4 |
 | Form Filler — flat PDF / Word doc → fillable form | `form-filler/` | `/Utilities/form-filler/` | 1.2 |
-| Launcher — the front page listing the tools | `home/` | `/Utilities/home/` | 1.4 |
+| Daycare Forms — type a child's details once, get the French daycare forms (registration package, attendance sheets, Attestation) filled in on letter paper. See `daycare-forms/how-to-use-daycare-forms.txt` | `daycare-forms/` | `/Utilities/daycare-forms/` | 1.0 |
+| Launcher — the front page listing the tools | `home/` | `/Utilities/home/` | 1.5 |
 
 ## One folder per app — why the layout looks like this
 
@@ -64,3 +65,14 @@ Two things make that true:
 
 Plain-English instructions for the tool live in
 `form-filler/how-to-use-form-filler.txt`.
+
+## Daycare Forms and the office's form versions
+
+`daycare-forms/templates/` holds the blank 2026 forms exactly as BC du Parc sent
+them (email of Aug 5, 2026), plus Moshe's English translation of the Fiche
+d'identification. `daycare-forms/forms.js` knows where every answer goes on each
+one: page coordinates for the flat forms, field names for the government's
+fillable ones. When the office sends a new version of a form, replace that one
+template and re-check its section in `forms.js`; nothing else changes. Like Form
+Filler, the tool carries its own pdf-lib copy and caches everything in `sw.js`,
+so it works offline once opened.
