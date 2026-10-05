@@ -1,7 +1,7 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.1';
+  const VERSION = '1.2';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -16,31 +16,25 @@
     bcName: 'BC du Parc', division: '10586', rate: '9.65',
     hours: [0, 1, 2, 3, 4].map(() => ({ open: '9:30', close: '14:30' })).concat([{ open: 'Fermé', close: '' }, { open: 'Fermé', close: '' }]),
     vacation: '', claimClosure: false, overtimeRate: '', overtimeUnit: '',
+    payFrequency: 'biweekly', payMethod: 'cash',
     snackAM: '', lunch: '', snackPM: '',
   };
   const emptyParent = relation => ({ first: '', last: '', relation, street: '', apt: '', city: '', postal: '', homeTel: '', workTel: '', cell: '', email: '', sin: '' });
 
   const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 
-  // The agreement runs to the end of the reference year (August 31).
-  function defaultEnd(startIso) {
-    const d = startIso ? new Date(startIso + 'T12:00') : new Date();
-    const y = d.getMonth() >= 8 ? d.getFullYear() + 1 : d.getFullYear();
-    return y + '-08-31';
-  }
-
   function newChild(S) {
     const mon = (S.hours && S.hours[0]) || {};
     return {
       id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       child: { first: '', last: '', dob: '', sex: '' },
-      parentA: emptyParent('Père'), parentB: emptyParent('Mère'),
+      parentA: emptyParent('Mère'), parentB: emptyParent('Père'),
       noParentB: false, sameAddr: true,
       payer: 'A', citizen: true, status: '', benefits: false, prevContribution: false,
       days: [true, true, true, true, true, false, false],
       arrive: /ferm/i.test(mon.open || '') ? '' : (mon.open || ''), depart: mon.close || '',
-      startDate: '', endDate: defaultEnd(''), contribution: 'reduced', includeMinistere: false,
-      signDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
+      startDate: '', endDate: '', contribution: 'reduced', includeMinistere: false,
+      signDate: today(), decisionDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
     };
   }
 
@@ -251,10 +245,17 @@
   $('#v-child').addEventListener('input', e => {
     const el = e.target; if (!el.dataset.k || !editing) return;
     set(editing, el.dataset.k, el.type === 'checkbox' ? el.checked : el.value);
-    if (el.dataset.k === 'startDate' && el.value) {
-      editing.endDate = defaultEnd(el.value);
-      $('#v-child [data-k="endDate"]').value = editing.endDate;
+  });
+  // The office-page date follows the signing date until it is changed on its own.
+  let lastSign = null;
+  $('#v-child').addEventListener('focusin', e => { if (e.target.dataset.k === 'signDate') lastSign = editing.signDate; });
+  $('#v-child').addEventListener('input', e => {
+    if (e.target.dataset.k !== 'signDate' || !editing) return;
+    if (!editing.decisionDate || editing.decisionDate === lastSign) {
+      editing.decisionDate = editing.signDate;
+      $('#v-child [data-k="decisionDate"]').value = editing.decisionDate;
     }
+    lastSign = editing.signDate;
   });
   $('#v-child').addEventListener('change', e => {
     const el = e.target; if (!editing) return;
@@ -301,7 +302,6 @@
   // What the forms will actually use (Parent B borrowing Parent A's address, etc.).
   function forForms(c) {
     const out = clone(c);
-    if (!out.endDate) out.endDate = defaultEnd(out.startDate);
     if (c.noParentB) out.parentB = emptyParent('');
     else if (c.sameAddr !== false) ['street', 'apt', 'city', 'postal', 'homeTel'].forEach(k => { out.parentB[k] = c.parentA[k]; });
     return out;
@@ -385,7 +385,7 @@
   $('#v-settings').addEventListener('click', e => {
     const b = e.target.closest('button'); const seg = b && b.closest('[data-sseg]');
     if (!seg) return;
-    set(editingS, seg.dataset.sseg, b.dataset.v === 'true');
+    const v = b.dataset.v; set(editingS, seg.dataset.sseg, v === 'true' ? true : v === 'false' ? false : v);
     seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   });
   $('#btnSettingsCancel').addEventListener('click', () => go('home'));

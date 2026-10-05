@@ -62,6 +62,15 @@
 
   const DAYS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
+  // What the parent pays per payment: daily rate × days a week × weeks per payment.
+  function paymentAmount(S, c) {
+    if (c.contribution === 'exempt') return null;
+    const rate = parseFloat(String(S.rate).replace(',', '.'));
+    const days = (c.days || []).filter(Boolean).length;
+    const weeks = { weekly: 1, biweekly: 2 }[S.payFrequency];
+    return isFinite(rate) && days && weeks ? rate * days * weeks : null;
+  }
+
   // Which parent pays and signs the contribution form.
   const payerOf = c => (c.payer === 'B' && hasPerson(c.parentB)) ? c.parentB : c.parentA;
 
@@ -217,7 +226,11 @@
       p2.centre(c.depart, cols2[i], cols2[i + 1], 616, 9);
     });
 
-    // Payment amounts and "cheques payable to" are left blank on purpose (Moshe's call, v1.1).
+    // Amount on the line for how often parents pay; "cheques payable to" stays blank (cash).
+    const amt = paymentAmount(S, c);
+    if (amt != null && S.payFrequency === 'weekly') p2.centre(money(amt), 53.1, 91.7, 573.7, 8);
+    if (amt != null && S.payFrequency === 'biweekly') p2.centre(money(amt), 155.9, 199.9, 573.7, 8);
+    if (S.payMethod === 'cheque') p2.at(fullName(S.rsge), 212, 561, 124);
     p2.centre(isoDate(c.signDate), 19.8, 151.8, 144, 10);   // Date line by the RSGE signature
     p2.centre(isoDate(c.signDate), 19.8, 151.8, 90.5, 10);  // Date line by the parent signature
     p2.centre(isoDate(c.startDate), 166.5, 249.1, 212.5, 9);
@@ -259,7 +272,14 @@
       f.text('S3.1_Besoin_Garde_' + dayKey[i] + '_A', c.depart);
     });
     if (c.contribution === 'exempt') f.check('S4.1_Exemption_Paiement');
-    // Payment frequency and amount are left blank, same as on the Entente BC.
+    const amt = paymentAmount(S, c);
+    const freq = { weekly: 0, biweekly: 1, monthly: 2 }[S.payFrequency];
+    if (c.contribution !== 'exempt' && freq != null) {
+      f.pick('S4.2_Type_Versement', freq);
+      if (amt != null) f.text('S4.2_Montant_Versement', amt.toFixed(2).replace('.', ','));
+    }
+    const how = { cheque: 0, preauthorized: 1, cash: 2 }[S.payMethod];
+    if (c.contribution !== 'exempt' && how != null) f.pick('S4.2_Type_Paiement', how);
     f.text('S4.1_Date-Debut_Prestation', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_1', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_2', isoDate(c.endDate));
@@ -300,9 +320,13 @@
     }
     if (c.benefits === true) f.check('S5_Doc_4');
     if (c.prevContribution === true) f.check('S5_Doc_5');
-    // Page 4 — the coordinating office's box, prefilled the same way the office expects.
+    // Page 4 — the coordinating office's page, prefilled the way the office expects.
     f.text('S4_Nom_Titulaire', S.bcName); f.text('S4_No_Division', S.division);
     f.text('S4_Nom', S.rsge.last); f.text('S4_Prenom', S.rsge.first);
+    f.text('S7_Nom_1', c.child.last); f.text('S7_Prenom_1', c.child.first);
+    f.text('S7_Date_Deb_Garde_1', isoDate(c.startDate));
+    f.text('S7_Date_Decision_1', isoDate(c.decisionDate || c.signDate));
+    f.text('S7_Date_Signature', isoDate(c.decisionDate || c.signDate));
     await flatten(doc, f);
   }
 

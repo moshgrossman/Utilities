@@ -1,6 +1,6 @@
 DAYCARE FORMS - HOW TO USE IT
 
-Version 1.1
+Version 1.2
 
 
 WHAT IT DOES
@@ -59,11 +59,13 @@ Fill in the child, Parent A and Parent B. Phone numbers, postal codes and SIN nu
 
 Parent B: "Same address and home phone as Parent A" is ticked already, so you only type their name, cell, email and SIN. If there is no second parent, tick "There is no second parent on the forms".
 
-Care: tap the days the child comes. Times are copied from your opening hours. Pick the first day. "Agreement ends" fills itself in as August 31st.
+Care: tap the days the child comes. Times are copied from your opening hours. Pick the first day. "Agreement ends" is normally left empty.
+
+"Date on the office page" goes on the last page of the contribution form (the part for the office). It copies the signing date. Change it only if it should be different.
 
 "Date of signing" is today's date already. It goes on the "Date" lines next to the signatures. Change it if the forms will be signed on another day.
 
-Names, streets and cities typed all in small letters get capital letters when you move to the next box ("montreal" becomes "Montréal"). Picking Mother for one parent makes the other one Father.
+Names, streets and cities typed all in small letters get capital letters when you move to the next box ("montreal" becomes "Montréal"). Parent A starts as the Mother. Picking Mother for one parent makes the other one Father.
 
 Contribution form questions: the usual answers (Parent A signs, Canadian citizen, no social assistance, no other daycare) are already selected. Tap the other answer only if it is different.
 
@@ -78,7 +80,7 @@ A PDF named "Forms - (child's name).pdf" lands in your Downloads.
 
 A message under the button tells you if anything important was left blank (for example, a missing SIN). It still makes the forms. The blank boxes just print empty.
 
-Print it double-sided. Signatures are left blank for signing. The payment amounts and "cheques payable to" are left blank too.
+Print it double-sided. Signatures are left blank for signing. The amount for every two weeks (rate x days x 2) is filled in, with cash as the way to pay. "Cheques payable to" stays blank. To change how often parents pay or how, see "Daycare settings".
 
 To print the forms again later: on the main screen, tap "Make forms" next to the child.
 

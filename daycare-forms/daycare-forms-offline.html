@@ -83,7 +83,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.1 (single-file copy) · type it once, print every French form · nothing leaves this tablet</div>
+    <div class="subtitle">v1.2 (single-file copy) · type it once, print every French form · nothing leaves this tablet</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -148,8 +148,9 @@
       <label class="f">Arrival time<input type="text" data-k="arrive" placeholder="9:30"></label>
       <label class="f">Departure time<input type="text" data-k="depart" placeholder="14:30"></label>
       <label class="f">First day<input type="date" data-k="startDate"></label>
-      <label class="f">Agreement ends<input type="date" data-k="endDate"></label>
+      <label class="f">Agreement ends (usually left empty)<input type="date" data-k="endDate"></label>
       <label class="f">Date of signing (goes on the "Date" lines)<input type="date" data-k="signDate"></label>
+      <label class="f">Date on the office page (contribution form)<input type="date" data-k="decisionDate"></label>
     </div>
     <div class="q"><div class="qt">Space type</div>
       <div class="seg" data-seg="contribution"><button type="button" data-v="reduced">Reduced contribution ($/day)</button><button type="button" data-v="exempt">Exempt (pays nothing)</button></div></div>
@@ -224,6 +225,10 @@
       <label class="f">Extra-hours rate<input type="text" data-s="overtimeRate" placeholder="e.g. 5 $"></label>
       <label class="f">…for each<input type="text" data-s="overtimeUnit" placeholder="e.g. 15 min"></label>
     </div>
+    <div class="q"><div class="qt">Parents pay…</div>
+      <div class="seg" data-sseg="payFrequency"><button type="button" data-v="weekly">Every week</button><button type="button" data-v="biweekly">Every two weeks</button><button type="button" data-v="monthly">Every month</button></div></div>
+    <div class="q"><div class="qt">Parents pay by…</div>
+      <div class="seg" data-sseg="payMethod"><button type="button" data-v="cash">Cash</button><button type="button" data-v="cheque">Cheque</button><button type="button" data-v="preauthorized">Pre-authorized payment</button></div></div>
     <div class="q"><div class="qt">Do you charge parents the reduced contribution for closure days?</div>
       <div class="seg" data-sseg="claimClosure"><button type="button" data-v="true">Oui</button><button type="button" data-v="false">Non</button></div></div>
 
@@ -363,6 +368,15 @@
   };
 
   const DAYS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+  // What the parent pays per payment: daily rate × days a week × weeks per payment.
+  function paymentAmount(S, c) {
+    if (c.contribution === 'exempt') return null;
+    const rate = parseFloat(String(S.rate).replace(',', '.'));
+    const days = (c.days || []).filter(Boolean).length;
+    const weeks = { weekly: 1, biweekly: 2 }[S.payFrequency];
+    return isFinite(rate) && days && weeks ? rate * days * weeks : null;
+  }
 
   // Which parent pays and signs the contribution form.
   const payerOf = c => (c.payer === 'B' && hasPerson(c.parentB)) ? c.parentB : c.parentA;
@@ -519,7 +533,11 @@
       p2.centre(c.depart, cols2[i], cols2[i + 1], 616, 9);
     });
 
-    // Payment amounts and "cheques payable to" are left blank on purpose (Moshe's call, v1.1).
+    // Amount on the line for how often parents pay; "cheques payable to" stays blank (cash).
+    const amt = paymentAmount(S, c);
+    if (amt != null && S.payFrequency === 'weekly') p2.centre(money(amt), 53.1, 91.7, 573.7, 8);
+    if (amt != null && S.payFrequency === 'biweekly') p2.centre(money(amt), 155.9, 199.9, 573.7, 8);
+    if (S.payMethod === 'cheque') p2.at(fullName(S.rsge), 212, 561, 124);
     p2.centre(isoDate(c.signDate), 19.8, 151.8, 144, 10);   // Date line by the RSGE signature
     p2.centre(isoDate(c.signDate), 19.8, 151.8, 90.5, 10);  // Date line by the parent signature
     p2.centre(isoDate(c.startDate), 166.5, 249.1, 212.5, 9);
@@ -561,7 +579,14 @@
       f.text('S3.1_Besoin_Garde_' + dayKey[i] + '_A', c.depart);
     });
     if (c.contribution === 'exempt') f.check('S4.1_Exemption_Paiement');
-    // Payment frequency and amount are left blank, same as on the Entente BC.
+    const amt = paymentAmount(S, c);
+    const freq = { weekly: 0, biweekly: 1, monthly: 2 }[S.payFrequency];
+    if (c.contribution !== 'exempt' && freq != null) {
+      f.pick('S4.2_Type_Versement', freq);
+      if (amt != null) f.text('S4.2_Montant_Versement', amt.toFixed(2).replace('.', ','));
+    }
+    const how = { cheque: 0, preauthorized: 1, cash: 2 }[S.payMethod];
+    if (c.contribution !== 'exempt' && how != null) f.pick('S4.2_Type_Paiement', how);
     f.text('S4.1_Date-Debut_Prestation', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_1', isoDate(c.startDate));
     f.text('S8_Date_Frequentation_2', isoDate(c.endDate));
@@ -602,9 +627,13 @@
     }
     if (c.benefits === true) f.check('S5_Doc_4');
     if (c.prevContribution === true) f.check('S5_Doc_5');
-    // Page 4 — the coordinating office's box, prefilled the same way the office expects.
+    // Page 4 — the coordinating office's page, prefilled the way the office expects.
     f.text('S4_Nom_Titulaire', S.bcName); f.text('S4_No_Division', S.division);
     f.text('S4_Nom', S.rsge.last); f.text('S4_Prenom', S.rsge.first);
+    f.text('S7_Nom_1', c.child.last); f.text('S7_Prenom_1', c.child.first);
+    f.text('S7_Date_Deb_Garde_1', isoDate(c.startDate));
+    f.text('S7_Date_Decision_1', isoDate(c.decisionDate || c.signDate));
+    f.text('S7_Date_Signature', isoDate(c.decisionDate || c.signDate));
     await flatten(doc, f);
   }
 
@@ -740,7 +769,7 @@
 <script>/* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.1';
+  const VERSION = '1.2';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -755,31 +784,25 @@
     bcName: 'BC du Parc', division: '10586', rate: '9.65',
     hours: [0, 1, 2, 3, 4].map(() => ({ open: '9:30', close: '14:30' })).concat([{ open: 'Fermé', close: '' }, { open: 'Fermé', close: '' }]),
     vacation: '', claimClosure: false, overtimeRate: '', overtimeUnit: '',
+    payFrequency: 'biweekly', payMethod: 'cash',
     snackAM: '', lunch: '', snackPM: '',
   };
   const emptyParent = relation => ({ first: '', last: '', relation, street: '', apt: '', city: '', postal: '', homeTel: '', workTel: '', cell: '', email: '', sin: '' });
 
   const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 
-  // The agreement runs to the end of the reference year (August 31).
-  function defaultEnd(startIso) {
-    const d = startIso ? new Date(startIso + 'T12:00') : new Date();
-    const y = d.getMonth() >= 8 ? d.getFullYear() + 1 : d.getFullYear();
-    return y + '-08-31';
-  }
-
   function newChild(S) {
     const mon = (S.hours && S.hours[0]) || {};
     return {
       id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       child: { first: '', last: '', dob: '', sex: '' },
-      parentA: emptyParent('Père'), parentB: emptyParent('Mère'),
+      parentA: emptyParent('Mère'), parentB: emptyParent('Père'),
       noParentB: false, sameAddr: true,
       payer: 'A', citizen: true, status: '', benefits: false, prevContribution: false,
       days: [true, true, true, true, true, false, false],
       arrive: /ferm/i.test(mon.open || '') ? '' : (mon.open || ''), depart: mon.close || '',
-      startDate: '', endDate: defaultEnd(''), contribution: 'reduced', includeMinistere: false,
-      signDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
+      startDate: '', endDate: '', contribution: 'reduced', includeMinistere: false,
+      signDate: today(), decisionDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
     };
   }
 
@@ -993,10 +1016,17 @@
   $('#v-child').addEventListener('input', e => {
     const el = e.target; if (!el.dataset.k || !editing) return;
     set(editing, el.dataset.k, el.type === 'checkbox' ? el.checked : el.value);
-    if (el.dataset.k === 'startDate' && el.value) {
-      editing.endDate = defaultEnd(el.value);
-      $('#v-child [data-k="endDate"]').value = editing.endDate;
+  });
+  // The office-page date follows the signing date until it is changed on its own.
+  let lastSign = null;
+  $('#v-child').addEventListener('focusin', e => { if (e.target.dataset.k === 'signDate') lastSign = editing.signDate; });
+  $('#v-child').addEventListener('input', e => {
+    if (e.target.dataset.k !== 'signDate' || !editing) return;
+    if (!editing.decisionDate || editing.decisionDate === lastSign) {
+      editing.decisionDate = editing.signDate;
+      $('#v-child [data-k="decisionDate"]').value = editing.decisionDate;
     }
+    lastSign = editing.signDate;
   });
   $('#v-child').addEventListener('change', e => {
     const el = e.target; if (!editing) return;
@@ -1043,7 +1073,6 @@
   // What the forms will actually use (Parent B borrowing Parent A's address, etc.).
   function forForms(c) {
     const out = clone(c);
-    if (!out.endDate) out.endDate = defaultEnd(out.startDate);
     if (c.noParentB) out.parentB = emptyParent('');
     else if (c.sameAddr !== false) ['street', 'apt', 'city', 'postal', 'homeTel'].forEach(k => { out.parentB[k] = c.parentA[k]; });
     return out;
@@ -1127,7 +1156,7 @@
   $('#v-settings').addEventListener('click', e => {
     const b = e.target.closest('button'); const seg = b && b.closest('[data-sseg]');
     if (!seg) return;
-    set(editingS, seg.dataset.sseg, b.dataset.v === 'true');
+    const v = b.dataset.v; set(editingS, seg.dataset.sseg, v === 'true' ? true : v === 'false' ? false : v);
     seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   });
   $('#btnSettingsCancel').addEventListener('click', () => go('home'));

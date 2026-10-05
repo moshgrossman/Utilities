@@ -85,7 +85,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.1 · type it once, print every French form · nothing leaves this tablet</div>
+    <div class="subtitle">v1.2 · type it once, print every French form · nothing leaves this tablet</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -150,8 +150,9 @@
       <label class="f">Arrival time<input type="text" data-k="arrive" placeholder="9:30"></label>
       <label class="f">Departure time<input type="text" data-k="depart" placeholder="14:30"></label>
       <label class="f">First day<input type="date" data-k="startDate"></label>
-      <label class="f">Agreement ends<input type="date" data-k="endDate"></label>
+      <label class="f">Agreement ends (usually left empty)<input type="date" data-k="endDate"></label>
       <label class="f">Date of signing (goes on the "Date" lines)<input type="date" data-k="signDate"></label>
+      <label class="f">Date on the office page (contribution form)<input type="date" data-k="decisionDate"></label>
     </div>
     <div class="q"><div class="qt">Space type</div>
       <div class="seg" data-seg="contribution"><button type="button" data-v="reduced">Reduced contribution ($/day)</button><button type="button" data-v="exempt">Exempt (pays nothing)</button></div></div>
@@ -226,6 +227,10 @@
       <label class="f">Extra-hours rate<input type="text" data-s="overtimeRate" placeholder="e.g. 5 $"></label>
       <label class="f">…for each<input type="text" data-s="overtimeUnit" placeholder="e.g. 15 min"></label>
     </div>
+    <div class="q"><div class="qt">Parents pay…</div>
+      <div class="seg" data-sseg="payFrequency"><button type="button" data-v="weekly">Every week</button><button type="button" data-v="biweekly">Every two weeks</button><button type="button" data-v="monthly">Every month</button></div></div>
+    <div class="q"><div class="qt">Parents pay by…</div>
+      <div class="seg" data-sseg="payMethod"><button type="button" data-v="cash">Cash</button><button type="button" data-v="cheque">Cheque</button><button type="button" data-v="preauthorized">Pre-authorized payment</button></div></div>
     <div class="q"><div class="qt">Do you charge parents the reduced contribution for closure days?</div>
       <div class="seg" data-sseg="claimClosure"><button type="button" data-v="true">Oui</button><button type="button" data-v="false">Non</button></div></div>
 

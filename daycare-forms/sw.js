@@ -1,5 +1,5 @@
 /* Caches everything the tool needs so it keeps working with no network at all. */
-const CACHE = 'daycare-forms-v1.1';
+const CACHE = 'daycare-forms-v1.2';
 const ASSETS = [
   './', './index.html', './app.js', './forms.js', './manifest.json', './vendor/pdf-lib.min.js',
   './templates/renseignements-2026.pdf', './templates/entente-bc-2026.pdf',
