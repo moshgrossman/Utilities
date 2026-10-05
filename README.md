@@ -15,7 +15,7 @@ the one-time switch-on).
 | Bulk → TXT Converter — EPUB/PDF/MOBI/CSV/HTML/MHTML → plain `.txt`, split into ~300 KB parts (or small files combined up to ~300 KB). Web pages keep only the article text — see `converter/how-to-use-converter.txt` | `converter/` | `/Utilities/converter/` | 3.5 |
 | Audio Finder — pulls audio links out of a Chrome network log | `audio-finder/` | `/Utilities/audio-finder/` | 1.4 |
 | Form Filler — flat PDF / Word doc → fillable form | `form-filler/` | `/Utilities/form-filler/` | 1.2 |
-| Daycare Forms — type a child's details once, get the French daycare forms (registration package, attendance sheets, Attestation) filled in on letter paper. See `daycare-forms/how-to-use-daycare-forms.txt` | `daycare-forms/` | `/Utilities/daycare-forms/` | 1.0 |
+| Daycare Forms — type a child's details once, get the French daycare forms (registration package, attendance sheets, Attestation) filled in on letter paper. See `daycare-forms/how-to-use-daycare-forms.txt` | `daycare-forms/` | `/Utilities/daycare-forms/` | 1.3 |
 | Launcher — the front page listing the tools | `home/` | `/Utilities/home/` | 1.5 |
 
 ## One folder per app — why the layout looks like this
@@ -76,3 +76,6 @@ fillable ones. When the office sends a new version of a form, replace that one
 template and re-check its section in `forms.js`; nothing else changes. Like Form
 Filler, the tool carries its own pdf-lib copy and caches everything in `sw.js`,
 so it works offline once opened.
+`daycare-forms/daycare-forms-offline.html` is the single-file copy (all templates inlined)
+for opening straight from Downloads; rebuild it after any change with
+`python3 daycare-forms/build-offline.py`.
