@@ -85,7 +85,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.3 · type it once, print every French form · nothing leaves this tablet</div>
+    <div class="subtitle">v1.4 · type it once, print every French form · nothing leaves this tablet</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -262,6 +262,17 @@
     <div id="attStartNote" class="status hidden"></div>
     <h3>Children</h3>
     <div id="attList"></div>
+
+    <h3>Add a child for attendance only</h3>
+    <p class="help">For children already registered on paper. Only the names that go on the attendance sheet. You can fill in the rest later with "Edit" on the main screen.</p>
+    <div class="grid">
+      <label class="f">Child's first name<input type="text" id="qChildFirst" data-fmt="name" autocomplete="off"></label>
+      <label class="f">Child's last name<input type="text" id="qChildLast" data-fmt="name" autocomplete="off"></label>
+      <label class="f">Parent's first name<input type="text" id="qParentFirst" data-fmt="name" autocomplete="off"></label>
+      <label class="f">Parent's last name<input type="text" id="qParentLast" data-fmt="name" autocomplete="off"></label>
+    </div>
+    <div class="row" style="margin-top:12px"><button id="btnQuickAdd">+ Add to the list</button></div>
+    <div id="qStatus" class="status hidden"></div>
     <div id="attStatus" class="status hidden"></div>
     <div class="sticky row">
       <button data-go="home">Back</button>
