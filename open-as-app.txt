@@ -20,6 +20,12 @@ https://moshgrossman.github.io/Utilities/converter/
 Audio Finder:
 https://moshgrossman.github.io/Utilities/audio-finder/
 
+Form Filler:
+https://moshgrossman.github.io/Utilities/form-filler/
+
+Daycare Forms:
+https://moshgrossman.github.io/Utilities/daycare-forms/
+
 The all-in-one launcher, if you want it too:
 https://moshgrossman.github.io/Utilities/home/
 
@@ -37,12 +43,20 @@ address above in a normal Chrome tab and try again.
 
 4. Check the home screen. You should see a separate icon: a
 yellow page for the converter, teal headphones for Audio Finder,
-a yellow U for the launcher. Tap it — that tool opens in its own
+the Form Filler icon, a yellow page with a teal tick for Daycare
+Forms, a yellow U for the launcher. Tap it — that tool opens in its own
 window, with its own entry in recent apps. In DeX it gets its own
 desktop-style window.
 
 
 5. Repeat from step 1 for the next tool.
+
+
+DAYCARE FORMS AS AN APP: once installed, it works with no
+internet at all, like the single-file copy. Its saved children
+belong to the app (the same as the web address in Chrome), not
+to the single file. If you have been using the single file, open
+it, tap "Save backup", then open the app and tap "Load backup".
 
 
 THE OLD ADDRESSES STILL WORK. If you have the previous links
