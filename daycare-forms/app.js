@@ -1,7 +1,7 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.4';
+  const VERSION = '1.5';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -468,7 +468,7 @@
     try {
       const bytes = await DaycareForms.attendanceSheets(loadTemplate, db.settings, kids.map(forForms), start);
       download(bytes, 'Attendance ' + start + '.pdf');
-      showStatus($('#attStatus'), 'Downloaded "Attendance ' + start + '.pdf": ' + (kids.length > 1 ? kids.length + ' sheets, each on its own sheet of paper when printed double-sided.' : '1 sheet.'));
+      showStatus($('#attStatus'), 'Downloaded "Attendance ' + start + '.pdf": ' + (kids.length > 1 ? kids.length + ' sheets, one per page. Print single-sided.' : '1 sheet.'));
     } catch (err) { showStatus($('#attStatus'), 'Something went wrong: ' + err.message, true); }
     finally { btn.disabled = false; }
   });

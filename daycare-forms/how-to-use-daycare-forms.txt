@@ -1,6 +1,6 @@
 DAYCARE FORMS - HOW TO USE IT
 
-Version 1.4
+Version 1.5
 
 
 WHAT IT DOES
@@ -95,7 +95,9 @@ Pick the first Monday of the two weeks. If you pick a day that isn't a Monday, i
 
 All current children are ticked. Untick anyone you don't want.
 
-Tap "Make attendance sheets". One PDF downloads, one sheet per child.
+Tap "Make attendance sheets". One PDF downloads, one sheet per child, one page each. Print it single-sided.
+
+Already filled in on each sheet: the names, the two week dates, and on the payment line the second week with the second Friday as the payment date. The two "Date" lines by the signatures also get that Friday. You write the P/A codes and the amounts by hand (or type them into the PDF).
 
 Children registered before you started using the tool: at the bottom of the same screen, under "Add a child for attendance only", type the child's and one parent's name and tap "+ Add to the list". They appear in the list, ticked, and on the main screen marked "Attendance only". When their full forms are needed (for example at next year's registration), tap "Edit" next to them and fill in the rest.
 
