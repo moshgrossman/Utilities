@@ -1,7 +1,7 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.3';
+  const VERSION = '1.4';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -163,7 +163,7 @@
     $('#listCurrent').innerHTML = current.length ? current.map(c => `
       <div class="card">
         <div class="name">${esc(childName(c))}</div>
-        <div class="meta">${c.startDate ? 'Started ' + esc(c.startDate) : 'No start date yet'}${c.child.dob ? ' · born ' + esc(c.child.dob) : ''}</div>
+        <div class="meta">${c.attendanceOnly ? 'Attendance only · tap Edit to add the rest' : (c.startDate ? 'Started ' + esc(c.startDate) : 'No start date yet') + (c.child.dob ? ' · born ' + esc(c.child.dob) : '')}</div>
         <div class="row">
           <button class="primary" data-act="make" data-id="${c.id}">Make forms</button>
           <button data-act="edit" data-id="${c.id}">Edit</button>
@@ -334,6 +334,7 @@
   }
 
   function saveEditing() {
+    if (editing.attendanceOnly && (editing.child.dob || editing.startDate)) delete editing.attendanceOnly;
     const i = db.children.findIndex(x => x.id === editing.id);
     if (i >= 0) db.children[i] = clone(editing); else db.children.push(clone(editing));
     return save();
@@ -431,6 +432,29 @@
     else showStatus(note, 'Weeks starting ' + start + ' and ' + DaycareForms.addDays(start, 7) + '.');
   }
   $('#attStart').addEventListener('change', () => { attChosen = null; renderAttendance(); });
+
+  // Quick add: just the names an attendance sheet needs. The parent is entered as
+  // Parent A, so the full forms can still be made later after filling in the rest.
+  $('#btnQuickAdd').addEventListener('click', () => {
+    const v = id => FORMAT.name($('#' + id).value);
+    const first = v('qChildFirst'), last = v('qChildLast');
+    if (!first && !last) { showStatus($('#qStatus'), "Type the child's name.", true); return; }
+    // The parent's name goes on the sheet (the parent signs it), so it can't be skipped.
+    if (!v('qParentFirst') && !v('qParentLast')) { showStatus($('#qStatus'), "Type the parent's name too. It goes on the attendance sheet.", true); return; }
+    const c = newChild(db.settings);
+    c.child.first = first; c.child.last = last;
+    c.parentA.first = v('qParentFirst'); c.parentA.last = v('qParentLast');
+    c.noParentB = true; c.attendanceOnly = true;
+    db.children.push(c);
+    const ok = save();
+    if (attChosen) attChosen.add(c.id);
+    ['qChildFirst', 'qChildLast', 'qParentFirst', 'qParentLast'].forEach(id => { $('#' + id).value = ''; });
+    renderAttendance();
+    showStatus($('#qStatus'), ok ? 'Added ' + childName(c) + '. It is ticked in the list above.' : 'Added, but Chrome is blocking saving. Use "Save backup".', !ok);
+    $('#qChildFirst').focus();
+  });
+  ['qChildFirst', 'qChildLast', 'qParentFirst', 'qParentLast'].forEach(id =>
+    $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.target.blur(); $('#btnQuickAdd').click(); } }));
   $('#attList').addEventListener('change', e => {
     const id = e.target.dataset.att; if (!id) return;
     if (e.target.checked) attChosen.add(id); else attChosen.delete(id);

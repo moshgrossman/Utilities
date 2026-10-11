@@ -1,6 +1,6 @@
 DAYCARE FORMS - HOW TO USE IT
 
-Version 1.3
+Version 1.4
 
 
 WHAT IT DOES
@@ -35,7 +35,7 @@ https://moshgrossman.github.io/Utilities/daycare-forms/
 
 You should see a dark page titled "Daycare Forms", with a yellow "+ New child" button.
 
-If Chrome offers "Install app", say yes. It then opens like an app and works even with no internet.
+To put it on the home screen as its own app: tap Chrome's three-dot menu, then "Install app" (or "Add to Home screen"), then "Install". A yellow page icon with a teal tick appears. It opens in its own window and works even with no internet. If the menu doesn't offer it, open the address in a normal Chrome tab, not inside another installed app.
 
 If the page does not load (for example, GitHub is having a bad day), use the single-file copy instead: daycare-forms-offline.html. Download it once and open it from your Downloads in Chrome. It needs no internet at all. Its saved children are kept separately from the web page's, so move them with "Save backup" and "Load backup".
 
@@ -96,6 +96,8 @@ Pick the first Monday of the two weeks. If you pick a day that isn't a Monday, i
 All current children are ticked. Untick anyone you don't want.
 
 Tap "Make attendance sheets". One PDF downloads, one sheet per child.
+
+Children registered before you started using the tool: at the bottom of the same screen, under "Add a child for attendance only", type the child's and one parent's name and tap "+ Add to the list". They appear in the list, ticked, and on the main screen marked "Attendance only". When their full forms are needed (for example at next year's registration), tap "Edit" next to them and fill in the rest.
 
 
 STEP 6 - WHEN A CHILD LEAVES
