@@ -9,7 +9,7 @@
   const { PDFDocument, StandardFonts, PDFName, PDFHexString, PDFObjectCopier, TextAlignment, rgb } = PDFLib;
 
   const LETTER = [612, 792];
-  const INK = rgb(0.05, 0.1, 0.45);   // dark blue, so typed answers stand out from the printed form
+  const INK = rgb(0, 0, 0);   // black, like the rest of the form
 
   const TEMPLATES = {
     renseignements: 'templates/renseignements-2026.pdf',
@@ -382,6 +382,16 @@
     w.at(c.leftDate && c.leftDate <= addDays(weekStart, 13) ? isoDate(c.leftDate) : '', 150, 591.5, 400);
     w.centre(weekStart, 35.4, 117.6, 325.5, 9);
     w.centre(addDays(weekStart, 7), 35.4, 117.6, 308, 9);
+    // Payment confirmation and signature dates, laid out the way Gitty's sheets are:
+    // the second row is the second week, paid and signed on that week's Friday.
+    const friday = addDays(weekStart, 11);
+    const cols = [35.4, 166.9, 298.5, 430.1, 561.5];
+    [241, 223.5].forEach((y, row) => {
+      const vals = row === 1 ? [addDays(weekStart, 7), friday, '', ''] : ['', '', '', ''];
+      vals.forEach((v, i) => w.centre(v, cols[i], cols[i + 1], y, 9));
+    });
+    w.centre(friday, 447.6, 560.8, 167, 9);   // Date by the RSGE signature
+    w.centre(friday, 447.6, 560.8, 96, 9);    // Date by the parent signature
   }
 
   // Attestation des services de garde fournis 2026 — letter, 3 copies, fillable.
@@ -417,7 +427,7 @@
   // on a front side, so double-sided printing never puts two forms on one sheet.
   // The typing boxes come along and stay editable: each form's boxes get a
   // prefix (f1_, f2_…) so two copies of the same form never share a box.
-  async function assemble(docs) {
+  async function assemble(docs, { duplex = true } = {}) {
     const out = await PDFDocument.create();
     const acro = out.catalog.getOrCreateAcroForm();
     const DR = PDFName.of('DR'), FONT = PDFName.of('Font'), T = PDFName.of('T'), PARENT = PDFName.of('Parent'), ANNOTS = PDFName.of('Annots');
@@ -425,6 +435,7 @@
     acro.dict.set(DR, out.context.obj({ Font: outFonts }));
     for (let k = 0; k < docs.length; k++) {
       const src = docs[k];
+      await finish(src);   // draw every box's text with its final alignment and size
       // Fonts the boxes use when someone types into them later.
       const srcAcro = src.catalog.getAcroForm();
       const srcDR = srcAcro && srcAcro.dict.lookup(DR);
@@ -467,7 +478,7 @@
         field.set(T, PDFHexString.fromText('f' + (k + 1) + '_' + (t ? t.decodeText() : 'box')));
         acro.addField(ref);
       });
-      if (copied.length % 2 === 1 && k < docs.length - 1) out.addPage(LETTER);
+      if (duplex && copied.length % 2 === 1 && k < docs.length - 1) out.addPage(LETTER);
     }
     return out.save();
   }
@@ -492,7 +503,7 @@
       await fillAssiduite(doc, S, c, weekStart);
       docs.push(doc);
     }
-    return assemble(docs);
+    return assemble(docs, { duplex: false });   // printed single-sided
   }
 
   async function attestation(load, S, c) {
