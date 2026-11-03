@@ -85,7 +85,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.5 · type it once, print every French form · nothing leaves this tablet</div>
+    <div class="subtitle">v1.6.1 · type it once, print every French form · nothing leaves this tablet</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -97,6 +97,7 @@
 
     <div class="row">
       <button class="primary big" id="btnNew">+ New child</button>
+      <button class="big" id="btnFormsMany">Forms for several children</button>
       <button class="big" data-go="attendance">Attendance sheets</button>
       <button class="big" data-go="settings">Daycare settings</button>
     </div>
@@ -144,6 +145,9 @@
     </div>
 
     <h3>Care</h3>
+    <div class="q hidden" id="shiftQ"><div class="qt">Which daycare?</div>
+      <div class="seg" data-seg="shift"><button type="button" data-v="day">Day</button><button type="button" data-v="night">Night</button></div>
+      <p class="help">Choosing Night fills in the days and times from your night hours (Daycare settings). You can still change them below.</p></div>
     <div class="q"><div class="qt">Days the child comes</div>
       <div class="seg" id="daysSeg"></div></div>
     <div class="grid">
@@ -202,9 +206,9 @@
     <div class="grid">
       <label class="f">First name<input type="text" data-s="rsge.first" data-fmt="name"></label>
       <label class="f">Last name<input type="text" data-s="rsge.last" data-fmt="name"></label>
-      <label class="f wide">Street address<input type="text" data-s="rsge.street" data-fmt="name" placeholder="755 Avenue ..."></label>
+      <label class="f wide">Street address<input type="text" data-s="rsge.street" data-fmt="name" placeholder="Street number and name"></label>
       <label class="f">Apt<input type="text" data-s="rsge.apt"></label>
-      <label class="f">City<input type="text" data-s="rsge.city" data-fmt="city" placeholder="Outremont"></label>
+      <label class="f">City<input type="text" data-s="rsge.city" data-fmt="city" placeholder="City"></label>
       <label class="f">Postal code<input type="text" data-s="rsge.postal" data-fmt="postal"></label>
       <label class="f">Phone<input type="tel" data-s="rsge.phone" data-fmt="phone"></label>
       <label class="f">Cell<input type="tel" data-s="rsge.cell" data-fmt="phone"></label>
@@ -221,6 +225,13 @@
     <h3>Opening hours</h3>
     <p class="help">Write "Fermé" for closed days.</p>
     <table class="hours" id="hoursTable"></table>
+
+    <h3>Night daycare</h3>
+    <label class="check"><input type="checkbox" id="nightEnabled"> I also run a night daycare</label>
+    <div id="nightWrap" class="hidden">
+      <p class="help">The night daycare is registered separately: each child is either Day or Night. A night child's contract shows these hours. Write "Fermé" for closed days.</p>
+      <table class="hours" id="nightHoursTable"></table>
+    </div>
 
     <h3>Contract details (Entente pour garde)</h3>
     <div class="grid">
@@ -270,6 +281,7 @@
       <label class="f">Child's last name<input type="text" id="qChildLast" data-fmt="name" autocomplete="off"></label>
       <label class="f">Parent's first name<input type="text" id="qParentFirst" data-fmt="name" autocomplete="off"></label>
       <label class="f">Parent's last name<input type="text" id="qParentLast" data-fmt="name" autocomplete="off"></label>
+      <label class="f hidden" id="qShiftWrap">Which daycare?<select id="qShift"><option value="day">Day</option><option value="night">Night</option></select></label>
     </div>
     <div class="row" style="margin-top:12px"><button id="btnQuickAdd">+ Add to the list</button></div>
     <div id="qStatus" class="status hidden"></div>
@@ -278,6 +290,24 @@
       <button data-go="home">Back</button>
       <span class="grow"></span>
       <button class="primary" id="btnAttMake">Make attendance sheets</button>
+    </div>
+  </section>
+
+  <!-- ================= MAKE FORMS ================= -->
+  <section id="v-forms" class="hidden">
+    <h2>Make forms</h2>
+    <p class="help">Tick the forms, tick the children, and tap Make. You get one file, child by child, with only the forms you ticked.</p>
+    <h3>Forms</h3>
+    <div class="row" style="margin-bottom:6px"><button id="btnFormsAll">All forms</button><button id="btnFormsNone">None</button></div>
+    <div id="formsList"></div>
+    <h3>Children</h3>
+    <div class="row" style="margin-bottom:6px"><button id="btnKidsAll">All children</button><button id="btnKidsNone">None</button></div>
+    <div id="formsKids"></div>
+    <div id="formsStatus" class="status hidden"></div>
+    <div class="sticky row">
+      <button data-go="home">Back</button>
+      <span class="grow"></span>
+      <button class="primary" id="btnFormsMake">Make</button>
     </div>
   </section>
 

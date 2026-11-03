@@ -49,7 +49,7 @@
     return { area: '', rest: s(p) };
   }
 
-  // "755 Avenue Querbes" -> { no: '755', street: 'Avenue Querbes' }
+  // "123 Avenue Example" -> { no: '123', street: 'Avenue Example' }
   function splitStreet(addr) {
     const m = /^\s*(\d+[A-Za-z]?(?:-\d+)?)[\s,]+(.*)$/.exec(s(addr));
     return m ? { no: m[1], street: m[2] } : { no: '', street: s(addr) };
@@ -61,6 +61,81 @@
   };
 
   const DAYS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+  // ---------- opening days, AD days, and the attendance amount ----------
+
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoOf = (y, m, d) => y + '-' + pad2(m) + '-' + pad2(d);   // m is 1 to 12
+  // 0 = Monday ... 6 = Sunday
+  function weekdayIndex(iso) {
+    const { y, m, d } = dateParts(iso);
+    return (new Date(Date.UTC(+y, +m - 1, +d)).getUTCDay() + 6) % 7;
+  }
+
+  // Easter Sunday of a year (Gregorian calendar).
+  function easterSunday(y) {
+    const a = y % 19, b = Math.floor(y / 100), cc = y % 100;
+    const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(cc / 4), k = cc % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+    return isoOf(y, month, day);
+  }
+
+  // The 10 predetermined closed days (AD) listed in the contract, for one year.
+  // Returns { 'YYYY-MM-DD': 'name' }.
+  const adCache = {};
+  function adDays(y) {
+    if (adCache[y]) return adCache[y];
+    const easter = easterSunday(y);
+    const firstMonday = month => 1 + ((7 - weekdayIndex(isoOf(y, month, 1))) % 7);
+    const out = {};
+    out[isoOf(y, 1, 1)] = "Jour de l'An";
+    out[addDays(easter, -2)] = 'Vendredi de Pâques';
+    out[addDays(easter, 1)] = 'Lundi de Pâques';
+    out[isoOf(y, 5, 24 - weekdayIndex(isoOf(y, 5, 24)))] = 'Journée nationale des patriotes';   // the Monday before May 25
+    out[isoOf(y, 6, 24)] = 'Fête nationale du Québec';
+    out[isoOf(y, 7, 1)] = 'Fête du Canada';
+    out[isoOf(y, 9, firstMonday(9))] = 'Fête du Travail';
+    out[isoOf(y, 10, firstMonday(10) + 7)] = "L'Action de Grâce";                                 // second Monday of October
+    out[isoOf(y, 12, 25)] = 'Jour de Noël';
+    out[isoOf(y, 12, 26)] = 'Lendemain de Noël';
+    return (adCache[y] = out);
+  }
+
+  // The opening hours that apply to a child: the night table for a night child.
+  const hoursFor = (S, c) => ((c && c.shift === 'night' && S.nightHours) ? S.nightHours : (S.hours || []));
+
+  // True for each weekday (Monday first) the child's daycare is closed.
+  const closedWeekdays = (S, c) => [0, 1, 2, 3, 4, 5, 6].map(i => {
+    const h = hoursFor(S, c)[i];
+    return !h || !s(h.open) || /ferm/i.test(s(h.open));
+  });
+
+  // What the attendance sheet shows for a closed day: F (regular closed day), AD (legal
+  // closed day), or '' when the daycare is open. An AD that lands on a regular closed day
+  // is just F: no extra day is closed to make up for it.
+  function dayCode(S, c, iso) {
+    if (closedWeekdays(S, c)[weekdayIndex(iso)]) return 'F';
+    return adDays(+dateParts(iso).y)[iso] ? 'AD' : '';
+  }
+
+  // Daily rate × the days the child was booked and the daycare was open, over the two weeks.
+  function attendanceAmount(S, c, monday) {
+    if (c.contribution === 'exempt') return null;
+    const rate = parseFloat(String(S.rate).replace(',', '.'));
+    if (!isFinite(rate)) return null;
+    let n = 0;
+    for (let i = 0; i < 14; i++) {
+      const iso = addDays(monday, i);
+      if (dayCode(S, c, iso)) continue;
+      if (!(c.days || [])[weekdayIndex(iso)]) continue;
+      if (s(c.startDate) && iso < c.startDate) continue;
+      if (s(c.leftDate) && iso > c.leftDate) continue;
+      n++;
+    }
+    return n ? rate * n : null;
+  }
 
   // What the parent pays per payment: daily rate × days a week × weeks per payment.
   function paymentAmount(S, c) {
@@ -211,7 +286,7 @@
     p1.tick(463.4, 490.9, 11, c.child.sex === 'F');
 
     const cols1 = [107.5, 174.6, 241.6, 308.6, 375.7, 442.7, 509.6, 576.7];
-    (S.hours || []).forEach((h, i) => {
+    hoursFor(S, c).forEach((h, i) => {
       p1.centre(h.open, cols1[i], cols1[i + 1], 354.6, 9);
       p1.centre(h.close, cols1[i], cols1[i + 1], 338.7, 9);
     });
@@ -270,7 +345,7 @@
     f.text('S1_Date_Naissance', isoDate(c.child.dob));
 
     f.text('S2_Heure_Collation_Matin', S.snackAM); f.text('S2_Heure_Collation_PM', S.snackPM); f.text('S2_Heure_Repas_Midi', S.lunch);
-    (S.hours || []).forEach((h, i) => {
+    hoursFor(S, c).forEach((h, i) => {
       if (/ferm/i.test(s(h.open))) return;
       f.text('S2.2_Periode_Habituelle_Debut_ligne_' + (i + 1), h.open);
       f.text('S2.2_Periode_Habituelle_Fin_ligne_' + (i + 1), h.close);
@@ -382,12 +457,24 @@
     w.at(c.leftDate && c.leftDate <= addDays(weekStart, 13) ? isoDate(c.leftDate) : '', 150, 591.5, 400);
     w.centre(weekStart, 35.4, 117.6, 325.5, 9);
     w.centre(addDays(weekStart, 7), 35.4, 117.6, 308, 9);
-    // Payment confirmation and signature dates, laid out the way Gitty's sheets are:
+    // F (regular closed days) and AD (legal closed days), one code per day, in the first of the
+    // day's two small boxes. Columns are Monday to Sunday, so line the dates up on the Monday.
+    const monday = addDays(weekStart, -weekdayIndex(weekStart));
+    const edges = [117.6, 149.2, 180.9, 212.5, 244.1, 275.8, 307.5, 339.1, 370.7, 402.4, 434.0, 465.6, 497.3, 529.0, 560.6];
+    [325.5, 308].forEach((y, wk) => {
+      for (let d = 0; d < 7; d++) {
+        const code = dayCode(S, c, addDays(monday, wk * 7 + d));
+        if (code) w.centre(code, edges[2 * d], edges[2 * d + 1], y, 9);
+      }
+    });
+    // Payment confirmation and signature dates, laid out the way the office's sheets are:
     // the second row is the second week, paid and signed on that week's Friday.
+    // The amount paid is the rate times the open days booked over both weeks.
     const friday = addDays(weekStart, 11);
+    const amt = attendanceAmount(S, c, monday);
     const cols = [35.4, 166.9, 298.5, 430.1, 561.5];
     [241, 223.5].forEach((y, row) => {
-      const vals = row === 1 ? [addDays(weekStart, 7), friday, '', ''] : ['', '', '', ''];
+      const vals = row === 1 ? [addDays(weekStart, 7), friday, amt != null ? money(amt) : '', ''] : ['', '', '', ''];
       vals.forEach((v, i) => w.centre(v, cols[i], cols[i + 1], y, 9));
     });
     w.centre(friday, 447.6, 560.8, 167, 9);   // Date by the RSGE signature
@@ -496,6 +583,21 @@
     return assemble(docs);
   }
 
+  // Any mix of forms for any mix of children, in one file: child by child, the ticked forms in the usual order.
+  const FORM_FILLERS = { ententeBC: fillEntenteBC, ententeMinistere: fillEntenteMinistere, renseignements: fillRenseignements, contribution: fillContribution, fiche: fillFiche };
+  async function makeForms(load, S, children, keys) {
+    const docs = [];
+    for (const c of children) {
+      for (const key of Object.keys(FORM_FILLERS)) {
+        if (!keys.includes(key)) continue;
+        const doc = await loadTemplate(load, key);
+        await FORM_FILLERS[key](doc, S, c);
+        docs.push(doc);
+      }
+    }
+    return assemble(docs);
+  }
+
   async function attendanceSheets(load, S, children, weekStart) {
     const docs = [];
     for (const c of children) {
@@ -512,7 +614,7 @@
     return assemble([doc]);
   }
 
-  const api = { TEMPLATES, registrationPackage, attendanceSheets, attestation, addDays, splitPhone, splitStreet };
+  const api = { TEMPLATES, registrationPackage, makeForms, attendanceSheets, attestation, addDays, splitPhone, splitStreet, adDays, dayCode, attendanceAmount, hoursFor };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DaycareForms = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,7 +1,7 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.5';
+  const VERSION = '1.6.1';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -15,6 +15,9 @@
     rsge: { first: '', last: '', street: '', apt: '', city: '', postal: '', phone: '', cell: '', other: '' },
     bcName: 'BC du Parc', division: '10586', rate: '9.65',
     hours: [0, 1, 2, 3, 4].map(() => ({ open: '9:30', close: '14:30' })).concat([{ open: 'Fermé', close: '' }, { open: 'Fermé', close: '' }]),
+    // Night daycare (registered separately). Monday first, like the day hours: open Sunday to Thursday.
+    nightEnabled: false,
+    nightHours: [0, 1, 2, 3].map(() => ({ open: '19:00', close: '00:00' })).concat([{ open: 'Fermé', close: '' }, { open: 'Fermé', close: '' }, { open: '19:00', close: '00:00' }]),
     vacation: '', claimClosure: false, overtimeRate: '', overtimeUnit: '',
     payFrequency: 'biweekly', payMethod: 'cash',
     snackAM: '', lunch: '', snackPM: '',
@@ -29,7 +32,7 @@
       id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       child: { first: '', last: '', dob: '', sex: '' },
       parentA: emptyParent('Mère'), parentB: emptyParent('Père'),
-      noParentB: false, sameAddr: true,
+      noParentB: false, sameAddr: true, shift: 'day',
       payer: 'A', citizen: true, status: '', benefits: false, prevContribution: false,
       days: [true, true, true, true, true, false, false],
       arrive: /ferm/i.test(mon.open || '') ? '' : (mon.open || ''), depart: mon.close || '',
@@ -49,6 +52,17 @@
   }
 
   let db = { settings: clone(DEFAULT_SETTINGS), children: [] };
+
+  // Day or night: which opening hours apply to a child.
+  const hoursOf = c => (c.shift === 'night' ? db.settings.nightHours : db.settings.hours);
+  const isOpenDay = h => !!(h && h.open && !/ferm/i.test(h.open));
+  // Fills the days and times from the daycare's hours (used when Day/Night is chosen).
+  function applyShiftTo(c) {
+    const h = hoursOf(c);
+    c.days = [0, 1, 2, 3, 4, 5, 6].map(i => isOpenDay(h[i]));
+    const first = h.find(isOpenDay);
+    c.arrive = first ? first.open : ''; c.depart = first ? first.close : '';
+  }
   let storageOK = true;
 
   function load() {
@@ -139,7 +153,7 @@
 
   // ---------- navigation ----------
 
-  const VIEWS = ['home', 'child', 'settings', 'attendance', 'left'];
+  const VIEWS = ['home', 'child', 'settings', 'attendance', 'forms', 'left'];
   function go(view) {
     VIEWS.forEach(v => $('#v-' + v).classList.toggle('hidden', v !== view));
     if (view === 'home') renderHome();
@@ -191,7 +205,7 @@
     const c = db.children.find(x => x.id === b.dataset.id); if (!c) return;
     const act = b.dataset.act;
     if (act === 'edit') openChild(c);
-    if (act === 'make') await makePackage(c, b);
+    if (act === 'make') openForms(c.id);
     if (act === 'left') openLeft(c);
     if (act === 'attest') await makeAttestation(c, b);
     if (act === 'back') { c.leftDate = ''; save(); renderHome(); }
@@ -249,6 +263,7 @@
     $('#parentBWrap').classList.toggle('hidden', !!c.noParentB);
     $$('#parentB [data-addr="1"]').forEach(el => el.classList.toggle('hidden', c.sameAddr !== false));
     $('#statusQ').classList.toggle('hidden', c.citizen !== false);
+    $('#shiftQ').classList.toggle('hidden', !(db.settings.nightEnabled || c.shift === 'night'));
     $$('[data-seg="payer"] button[data-v="B"]').forEach(b => { b.disabled = !!c.noParentB; });
   }
 
@@ -287,6 +302,7 @@
       if (v === 'true') v = true; else if (v === 'false') v = false;
       set(editing, seg.dataset.seg, v);
       seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      if (seg.dataset.seg === 'shift') { applyShiftTo(editing); fillChildForm(); return; }
       // Picking Mother for one parent makes the other one Father, and the other way round.
       const other = { 'parentA.relation': 'parentB', 'parentB.relation': 'parentA' }[seg.dataset.seg];
       const flip = { 'Père': 'Mère', 'Mère': 'Père' }[v];
@@ -319,7 +335,7 @@
   }
 
   // Blank answers are allowed, but never silent: list what will print empty.
-  function missing(c) {
+  function missing(c, keys) {
     const m = [];
     if (!c.child.first || !c.child.last) m.push("child's name");
     if (!c.child.dob) m.push("child's date of birth");
@@ -327,7 +343,7 @@
     if (!c.parentA.first || !c.parentA.last) m.push("Parent A's name");
     if (!c.parentA.street) m.push("Parent A's address");
     const payer = c.payer === 'B' ? c.parentB : c.parentA;
-    if (!payer.sin) m.push('SIN of the parent who signs');
+    if (!payer.sin && (!keys || ['renseignements', 'contribution', 'ententeMinistere'].some(k => keys.includes(k)))) m.push('SIN of the parent who signs');
     if (!c.startDate) m.push('first day');
     if (!c.days.some(Boolean)) m.push('days the child comes');
     return m;
@@ -346,10 +362,9 @@
     go('home');
     showStatus($('#homeStatus'), ok ? 'Saved: ' + childName(editing) + '.' : 'Could not save. Chrome is blocking storage. Use "Save backup".', !ok);
   });
-  $('#btnChildSaveMake').addEventListener('click', async e => {
+  $('#btnChildSaveMake').addEventListener('click', () => {
     saveEditing();
-    const c = db.children.find(x => x.id === editing.id);
-    await makePackage(c, e.currentTarget, $('#childStatus'));
+    openForms(editing.id);
   });
   $('#btnChildDelete').addEventListener('click', () => {
     if (!confirm('Delete ' + childName(editing) + ' and everything typed for them? This cannot be undone.')) return;
@@ -357,21 +372,70 @@
     save(); editing = null; go('home');
   });
 
-  async function makePackage(c, btn, statusEl) {
-    statusEl = statusEl || $('#homeStatus');
+  // ---------- make forms: pick the forms, pick the children ----------
+
+  const FORM_LIST = [
+    ['ententeBC', 'Contract (Entente pour garde)', 'Contract'],
+    ['ententeMinistere', 'Ministère contract (5 pages, most families do not need it)', 'Ministère contract'],
+    ['renseignements', 'Formulaire de renseignements', 'Renseignements'],
+    ['contribution', 'Contribution réduite', 'Contribution'],
+    ['fiche', "Fiche d'identification", 'Fiche'],
+  ];
+  let formsSel = new Set(), kidsSel = new Set();
+
+  // childId: that child is ticked, and so are all the forms (the Ministère contract only if that child has it turned on).
+  // No childId: nobody is ticked, for "one form for everyone".
+  function openForms(childId) {
+    const c = childId && db.children.find(x => x.id === childId);
+    formsSel = new Set(FORM_LIST.map(f => f[0]));
+    if (!(c && c.includeMinistere)) formsSel.delete('ententeMinistere');
+    kidsSel = new Set(c ? [c.id] : []);
+    $('#formsStatus').classList.add('hidden');
+    go('forms');
+    renderForms();
+  }
+  function renderForms() {
+    $('#formsList').innerHTML = FORM_LIST.map(([k, label]) =>
+      `<label class="check"><input type="checkbox" data-form="${k}" ${formsSel.has(k) ? 'checked' : ''}> ${esc(label)}</label>`).join('');
+    const kids = db.children.slice().sort((a, b) => (!!a.leftDate - !!b.leftDate) || childName(a).localeCompare(childName(b)));
+    const note = t => ` <span style="color:var(--muted)">(${esc(t)})</span>`;
+    $('#formsKids').innerHTML = kids.length ? kids.map(c =>
+      `<label class="check"><input type="checkbox" data-kid="${c.id}" ${kidsSel.has(c.id) ? 'checked' : ''}> ${esc(childName(c))}` +
+      (c.shift === 'night' ? note('night') : '') + (c.leftDate ? note('left ' + c.leftDate) : '') + (c.attendanceOnly ? note('attendance only, details missing') : '') + '</label>').join('')
+      : '<div class="empty">No children yet. Tap "+ New child" on the main screen.</div>';
+  }
+  $('#v-forms').addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset.form) { if (el.checked) formsSel.add(el.dataset.form); else formsSel.delete(el.dataset.form); }
+    if (el.dataset.kid) { if (el.checked) kidsSel.add(el.dataset.kid); else kidsSel.delete(el.dataset.kid); }
+  });
+  $('#btnFormsAll').addEventListener('click', () => { formsSel = new Set(FORM_LIST.map(f => f[0])); renderForms(); });
+  $('#btnFormsNone').addEventListener('click', () => { formsSel = new Set(); renderForms(); });
+  $('#btnKidsAll').addEventListener('click', () => { kidsSel = new Set(db.children.filter(c => !c.leftDate).map(c => c.id)); renderForms(); });
+  $('#btnKidsNone').addEventListener('click', () => { kidsSel = new Set(); renderForms(); });
+  $('#btnFormsMany').addEventListener('click', () => openForms(null));
+
+  $('#btnFormsMake').addEventListener('click', async e => {
+    const btn = e.currentTarget, st = $('#formsStatus');
+    const keys = FORM_LIST.map(f => f[0]).filter(k => formsSel.has(k));
+    const kids = db.children.filter(c => kidsSel.has(c.id)).sort((a, b) => childName(a).localeCompare(childName(b)));
+    if (!keys.length) { showStatus(st, 'Tick at least one form.', true); return; }
+    if (!kids.length) { showStatus(st, 'Tick at least one child.', true); return; }
     const label = btn.textContent;
     btn.disabled = true; btn.textContent = 'Making…';
     try {
-      const bytes = await DaycareForms.registrationPackage(loadTemplate, db.settings, forForms(c));
-      download(bytes, fileSafe('Forms - ' + childName(c)) + '.pdf');
-      const m = missing(c);
-      const extra = c.includeMinistere ? ' (with the Ministère contract)' : '';
-      showStatus(statusEl, 'Downloaded "Forms - ' + childName(c) + '.pdf"' + extra + '. Print it double-sided.' +
-        (m.length ? ' Left blank because it wasn\'t filled in: ' + m.join(', ') + '.' : ''), m.length > 0);
+      const bytes = await DaycareForms.makeForms(loadTemplate, db.settings, kids.map(forForms), keys);
+      const what = keys.length === 1 ? FORM_LIST.find(f => f[0] === keys[0])[2] : 'Forms';
+      const who = kids.length === 1 ? childName(kids[0]) : kids.length + ' children';
+      const name = fileSafe(what + ' - ' + who) + '.pdf';
+      download(bytes, name);
+      const warn = kids.map(c => { const m = missing(c, keys); return m.length ? childName(c) + ': ' + m.join(', ') : ''; }).filter(Boolean);
+      showStatus(st, 'Downloaded "' + name + '". Print it double-sided.' +
+        (warn.length ? " Left blank because it wasn't filled in: " + warn.join('; ') + '.' : ''), warn.length > 0);
     } catch (err) {
-      showStatus(statusEl, 'Something went wrong making the forms: ' + err.message, true);
+      showStatus(st, 'Something went wrong making the forms: ' + err.message, true);
     } finally { btn.disabled = false; btn.textContent = label; }
-  }
+  });
 
   // ---------- settings ----------
 
@@ -386,6 +450,11 @@
     $('#hoursTable').innerHTML = DAY_FR.map((d, i) => `<tr><td>${d}</td>
       <td><input type="text" data-h="${i}.open" value="${esc(editingS.hours[i].open)}" aria-label="${d} opening"></td>
       <td><input type="text" data-h="${i}.close" value="${esc(editingS.hours[i].close)}" aria-label="${d} closing"></td></tr>`).join('');
+    $('#nightEnabled').checked = !!editingS.nightEnabled;
+    $('#nightWrap').classList.toggle('hidden', !editingS.nightEnabled);
+    $('#nightHoursTable').innerHTML = DAY_FR.map((d, i) => `<tr><td>${d}</td>
+      <td><input type="text" data-nh="${i}.open" value="${esc(editingS.nightHours[i].open)}" aria-label="Night ${d} opening"></td>
+      <td><input type="text" data-nh="${i}.close" value="${esc(editingS.nightHours[i].close)}" aria-label="Night ${d} closing"></td></tr>`).join('');
     const T = DaycareForms.TEMPLATES;
     $('#versionsList').innerHTML = Object.keys(T).map(k => esc(T[k].replace('templates/', ''))).join('<br>');
   }
@@ -393,12 +462,17 @@
     const el = e.target; if (!editingS) return;
     if (el.dataset.s) set(editingS, el.dataset.s, el.value);
     if (el.dataset.h) { const [i, k] = el.dataset.h.split('.'); editingS.hours[+i][k] = el.value; }
+    if (el.dataset.nh) { const [i, k] = el.dataset.nh.split('.'); editingS.nightHours[+i][k] = el.value; }
   });
   $('#v-settings').addEventListener('click', e => {
     const b = e.target.closest('button'); const seg = b && b.closest('[data-sseg]');
     if (!seg) return;
     const v = b.dataset.v; set(editingS, seg.dataset.sseg, v === 'true' ? true : v === 'false' ? false : v);
     seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('#nightEnabled').addEventListener('change', e => {
+    editingS.nightEnabled = e.target.checked;
+    $('#nightWrap').classList.toggle('hidden', !editingS.nightEnabled);
   });
   $('#btnSettingsCancel').addEventListener('click', () => go('home'));
   $('#btnSettingsSave').addEventListener('click', () => {
@@ -426,6 +500,7 @@
     $('#attList').innerHTML = list.length ? list.map(c =>
       `<label class="check"><input type="checkbox" data-att="${c.id}" ${attChosen.has(c.id) ? 'checked' : ''}> ${esc(childName(c))}${c.leftDate ? ' <span style="color:var(--muted)">(left ' + esc(c.leftDate) + ')</span>' : ''}</label>`).join('')
       : '<div class="empty">No children attending in these two weeks.</div>';
+    $('#qShiftWrap').classList.toggle('hidden', !db.settings.nightEnabled);
     const day = new Date(start + 'T12:00').getDay();
     const note = $('#attStartNote');
     if (day !== 1) showStatus(note, 'Heads-up: that date is a ' + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day] + ', not a Monday.', true);
@@ -445,6 +520,7 @@
     c.child.first = first; c.child.last = last;
     c.parentA.first = v('qParentFirst'); c.parentA.last = v('qParentLast');
     c.noParentB = true; c.attendanceOnly = true;
+    if (db.settings.nightEnabled && $('#qShift').value === 'night') { c.shift = 'night'; applyShiftTo(c); }
     db.children.push(c);
     const ok = save();
     if (attChosen) attChosen.add(c.id);
