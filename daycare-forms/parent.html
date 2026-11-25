@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Child registration</title>
+<style>
+  :root { --bg:#f6f6f3; --card:#fff; --text:#1d1d1b; --muted:#66665f; --line:#d5d5cf; --accent:#1f5eff; --accent-text:#fff; --warn:#b3261e; --ok:#1b6e3a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#121212; --card:#1c1c1c; --text:#ececea; --muted:#9a9a93; --line:#333; --accent:#6c97ff; --accent-text:#0b0b0b; --warn:#ff8a80; --ok:#7fd69b; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:1.5rem; margin:8px 0 4px; }
+  h2 { font-size:1.1rem; margin:28px 0 8px; }
+  p { margin:6px 0 12px; }
+  .muted { color:var(--muted); font-size:0.9rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .wide { grid-column:1 / -1; }
+  @media (max-width:520px) { .grid { grid-template-columns:1fr; } }
+  label.f { display:block; font-size:0.9rem; font-weight:600; }
+  label.f span.req { color:var(--warn); }
+  input[type=text], input[type=tel], input[type=email], input[type=date] {
+    width:100%; margin-top:4px; padding:11px 12px; font:inherit; color:var(--text); background:var(--bg);
+    border:1px solid var(--line); border-radius:8px;
+  }
+  input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  .choices { display:flex; flex-wrap:wrap; gap:10px; margin:6px 0 2px; }
+  .choices label { display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--line); border-radius:8px; background:var(--bg); font-weight:500; }
+  .check { display:flex; align-items:center; gap:10px; margin:10px 0; font-weight:500; }
+  .check input, .choices input { width:20px; height:20px; margin:0; }
+  button { font:inherit; font-weight:600; padding:13px 20px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; }
+  button.primary { background:var(--accent); color:var(--accent-text); border-color:var(--accent); width:100%; font-size:1.05rem; margin-top:18px; }
+  .err { color:var(--warn); font-weight:600; margin:14px 0; }
+  .done { border-color:var(--ok); }
+  .done h2 { margin-top:0; color:var(--ok); }
+  .row { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Child registration</h1>
+  <p class="muted" id="forWho"></p>
+  <div class="card">
+    <p style="margin-top:0">Fill in your child's information below. At the end you get a Word file to send to your daycare by email or message.</p>
+    <p class="muted" style="margin-bottom:0">This page does not save or send anything by itself. The file is made on your own phone or computer, and only you send it. Send it only to your daycare.</p>
+  </div>
+
+  <form id="form" novalidate autocomplete="on">
+    <h2>Child</h2>
+    <div class="card"><div class="grid">
+      <label class="f">First name <span class="req">*</span><input type="text" id="child_first" autocomplete="off"></label>
+      <label class="f">Last name <span class="req">*</span><input type="text" id="child_last" autocomplete="off"></label>
+      <label class="f wide">Date of birth <span class="req">*</span><input type="date" id="child_dob"></label>
+    </div>
+    <div class="f" style="margin-top:12px;font-weight:600;font-size:0.9rem">Sex <span class="req" style="color:var(--warn)">*</span></div>
+    <div class="choices" id="child_sex">
+      <label><input type="radio" name="child_sex" value="Boy"> Boy</label>
+      <label><input type="radio" name="child_sex" value="Girl"> Girl</label>
+    </div></div>
+
+    <h2>Parent A</h2>
+    <div class="card" id="blockA"></div>
+
+    <h2>Parent B</h2>
+    <label class="check"><input type="checkbox" id="noB"> There is no second parent</label>
+    <div id="blockBWrap">
+      <label class="check"><input type="checkbox" id="sameAddr" checked> Same address and home phone as Parent A</label>
+      <div class="card" id="blockB"></div>
+    </div>
+
+    <p class="muted">The social insurance number (SIN) is only used for the reduced contribution form. You may leave it empty and give it to your daycare in person.</p>
+    <div id="error" class="err hidden" role="alert"></div>
+    <button type="submit" class="primary">Create the file to send</button>
+  </form>
+
+  <div id="result" class="card done hidden">
+    <h2>Your file is ready</h2>
+    <p id="resultText">Attach it to an email or a message to your daycare.</p>
+    <div class="row">
+      <button id="btnShare" class="hidden">Send it…</button>
+      <button id="btnDownload">Download the file</button>
+    </div>
+    <p class="muted">Nothing was saved or sent from this page. To fix a mistake, change the answers above and create the file again.</p>
+  </div>
+</main>
+
+<script src="docx-lite.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const PERSON = [
+    ['first', 'First name', 'text', 'given-name', true], ['last', 'Last name', 'text', 'family-name', true],
+    ['street', 'Street address', 'text', 'address-line1', true, 'wide addr'], ['apt', 'Apartment', 'text', 'address-line2', false, 'addr'],
+    ['city', 'City', 'text', 'address-level2', true, 'addr'], ['postal', 'Postal code', 'text', 'postal-code', true, 'addr'],
+    ['homeTel', 'Home phone', 'tel', 'tel', false, 'addr'], ['cell', 'Cell phone', 'tel', 'off', false],
+    ['workTel', 'Work phone', 'tel', 'off', false], ['email', 'Email', 'email', 'email', false], ['sin', 'Social insurance number (SIN)', 'text', 'off', false],
+  ];
+  const ROWLABEL = { first: 'first name', last: 'last name', street: 'street address', apt: 'apartment', city: 'city', postal: 'postal code',
+    homeTel: 'home phone', cell: 'cell phone', workTel: 'work phone', email: 'email', sin: 'social insurance number' };
+
+  function block(prefix, withAutofill) {
+    const choices = ['Mother', 'Father', 'Guardian'].map(r => '<label><input type="radio" name="' + prefix + '_rel" value="' + r + '"> ' + r + '</label>').join('');
+    $('block' + prefix).innerHTML = '<div class="f" style="font-weight:600;font-size:0.9rem">This parent is the <span class="req" style="color:var(--warn)">*</span></div>' +
+      '<div class="choices">' + choices + '</div><div class="grid" style="margin-top:12px">' +
+      PERSON.map(([k, label, type, ac, req, cls]) => '<label class="f ' + ((cls || '').includes('wide') ? 'wide' : '') + '" data-addr="' + ((cls || '').includes('addr') ? 1 : '') + '">' + label +
+        (req ? ' <span class="req">*</span>' : '') + '<input type="' + type + '" id="' + prefix + '_' + k + '" autocomplete="' + (withAutofill ? ac : 'off') + '"' +
+        (type === 'tel' ? ' inputmode="tel"' : '') + (k === 'sin' ? ' inputmode="numeric"' : '') + '></label>').join('') + '</div>';
+  }
+  block('A', true); block('B', false);
+
+  // The daycare's name comes in the link (?d=Name). It is shown as plain text only.
+  const d = (new URLSearchParams(location.search).get('d') || '').trim().slice(0, 80);
+  if (d) { $('forWho').textContent = 'For ' + d; document.title = 'Child registration for ' + d; }
+
+  function syncB() {
+    const none = $('noB').checked, same = $('sameAddr').checked;
+    $('blockBWrap').classList.toggle('hidden', none);
+    $('blockB').querySelectorAll('[data-addr="1"]').forEach(el => el.classList.toggle('hidden', same));
+  }
+  $('noB').addEventListener('change', syncB); $('sameAddr').addEventListener('change', syncB); syncB();
+
+  const val = id => ($(id).value || '').trim();
+  const radio = name => { const r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : ''; };
+
+  let current = null;   // { bytes, name, file }
+  const MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+  function personRows(p, same) {
+    const rows = [['Parent ' + p], ['Parent ' + p + ': relation', radio(p + '_rel')]];
+    PERSON.forEach(([k]) => {
+      let v = val(p + '_' + k);
+      if (same && ['street', 'apt', 'city', 'postal', 'homeTel'].includes(k)) v = '';
+      rows.push(['Parent ' + p + ': ' + ROWLABEL[k], v]);
+    });
+    return rows;
+  }
+
+  function validate(noB, same) {
+    const miss = [];
+    if (!val('child_first')) miss.push("the child's first name");
+    if (!val('child_last')) miss.push("the child's last name");
+    if (!val('child_dob')) miss.push("the child's date of birth");
+    if (!radio('child_sex')) miss.push("the child's sex");
+    const people = noB ? ['A'] : ['B', 'A'];
+    people.forEach(p => {
+      const w = 'Parent ' + p;
+      if (!radio(p + '_rel')) miss.push(w + ': Mother, Father or Guardian');
+      if (!val(p + '_first') || !val(p + '_last')) miss.push(w + "'s name");
+      if (!(p === 'B' && same)) {
+        if (!val(p + '_street') || !val(p + '_city') || !val(p + '_postal')) miss.push(w + "'s address");
+        if (p === 'A' && !val('A_homeTel') && !val('A_cell') && !val('A_workTel')) miss.push('a phone number for Parent A');
+      }
+    });
+    return miss;
+  }
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const noB = $('noB').checked, same = $('sameAddr').checked;
+    const miss = validate(noB, same);
+    const err = $('error');
+    if (miss.length) { err.textContent = 'Please fill in: ' + miss.join('; ') + '.'; err.classList.remove('hidden'); return; }
+    err.classList.add('hidden');
+    const rows = [['Form', 'Daycare Forms registration info v1'], ['Child'],
+      ['Child: first name', val('child_first')], ['Child: last name', val('child_last')],
+      ['Child: date of birth', val('child_dob')], ['Child: sex', radio('child_sex')]]
+      .concat(personRows('A', false));
+    if (noB) rows.push(['Parent B'], ['Parent B: included', 'No']);
+    else rows.push(...personRows('B', same).slice(0, 1), ['Parent B: included', 'Yes'], ['Parent B: same address and home phone as Parent A', same ? 'Yes' : 'No'], ...personRows('B', same).slice(1));
+    const bytes = DocxLite.makeDocx({ title: 'Child registration information', intro: [d ? 'For ' + d : 'Registration information for your daycare', 'Made on ' + new Date().toISOString().slice(0, 10)], rows });
+    const name = ('Registration - ' + val('child_first') + ' ' + val('child_last')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() + '.docx';
+    const file = new File([bytes], name, { type: MIME });
+    current = { bytes, name, file };
+    const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+    $('btnShare').classList.toggle('hidden', !canShare);
+    $('result').classList.remove('hidden');
+    $('resultText').textContent = canShare ? 'Tap "Send it…" and choose email, WhatsApp or text. Or download the file and attach it yourself.'
+      : 'Download the file and attach it to an email or a message to your daycare.';
+    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (canShare) shareNow();
+  });
+
+  async function shareNow() {
+    try { await navigator.share({ files: [current.file], title: 'Child registration' }); }
+    catch (err) { /* cancelled: the buttons stay on screen */ }
+  }
+  $('btnShare').addEventListener('click', () => current && shareNow());
+  $('btnDownload').addEventListener('click', () => {
+    if (!current) return;
+    const url = URL.createObjectURL(new Blob([current.bytes], { type: MIME }));
+    const a = document.createElement('a'); a.href = url; a.download = current.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
+})();
+</script>
+</body>
+</html>

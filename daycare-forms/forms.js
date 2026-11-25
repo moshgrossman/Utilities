@@ -19,6 +19,8 @@
     fiche: 'templates/fiche-identification-en.pdf',
     assiduite: 'templates/fiche-assiduite-2026.pdf',
     attestation: 'templates/attestation-2026.pdf',
+    integration: 'templates/plan-integration-2026.pdf',      // FO-5035, Plan d'intégration et bilan, 12 pages, fillable
+    rapport: 'templates/rapport-professionnel-2026.pdf',     // FO-5036, Rapport professionnel, 7 pages, fillable
   };
 
   // ---------- small helpers ----------
@@ -109,7 +111,7 @@
   // True for each weekday (Monday first) the child's daycare is closed.
   const closedWeekdays = (S, c) => [0, 1, 2, 3, 4, 5, 6].map(i => {
     const h = hoursFor(S, c)[i];
-    return !h || !s(h.open) || /ferm/i.test(s(h.open));
+    return !h || !s(h.open) || /ferm|closed/i.test(s(h.open));
   });
 
   // What the attendance sheet shows for a closed day: F (regular closed day), AD (legal
@@ -287,7 +289,7 @@
 
     const cols1 = [107.5, 174.6, 241.6, 308.6, 375.7, 442.7, 509.6, 576.7];
     hoursFor(S, c).forEach((h, i) => {
-      p1.centre(h.open, cols1[i], cols1[i + 1], 354.6, 9);
+      p1.centre(/^(closed|ferm)/i.test(s(h.open)) ? 'Fermé' : h.open, cols1[i], cols1[i + 1], 354.6, 9);
       p1.centre(h.close, cols1[i], cols1[i + 1], 338.7, 9);
     });
     p1.at(S.vacation, 25, 126, 545, 9);
@@ -346,7 +348,7 @@
 
     f.text('S2_Heure_Collation_Matin', S.snackAM); f.text('S2_Heure_Collation_PM', S.snackPM); f.text('S2_Heure_Repas_Midi', S.lunch);
     hoursFor(S, c).forEach((h, i) => {
-      if (/ferm/i.test(s(h.open))) return;
+      if (/ferm|closed/i.test(s(h.open))) return;
       f.text('S2.2_Periode_Habituelle_Debut_ligne_' + (i + 1), h.open);
       f.text('S2.2_Periode_Habituelle_Fin_ligne_' + (i + 1), h.close);
     });
@@ -583,18 +585,58 @@
     return assemble(docs);
   }
 
+  // Allocation pour l'intégration en service de garde: Plan d'intégration et bilan (FO-5035).
+  // Only the identification and the writer's name are filled; the plan itself is for the provider and the parent.
+  async function fillIntegration(doc, S, c) {
+    const f = formFiller(doc);
+    f.text('S1_Nom_Enfant', join(c.child.first, c.child.last));
+    f.text('S1_Date_Naissance', isoDate(c.child.dob));
+    f.text('S1_Nom_Tuteur1', fullName(c.parentA));
+    if (hasPerson(c.parentB)) f.text('S1_Nom_Tuteur2', fullName(c.parentB));
+    f.text('S1_Nom_Prestataire', fullName(S.rsge));
+    f.text('S1_Nom_BC', S.bcName);
+    f.text('S2_Redacteur', fullName(S.rsge));
+    await finish(doc);
+  }
+
+  // Rapport professionnel (FO-5036): section 2 identification and the RSGE's name in section 3.
+  // The professional's own part, the parent's choices and all signatures stay blank.
+  async function fillRapport(doc, S, c) {
+    const f = formFiller(doc);
+    const r = S.rsge;
+    const addr = p => join(p.street, p.apt ? 'app. ' + p.apt : '');
+    f.text('S2_Nom_Enfant', join(c.child.first, c.child.last));
+    f.text('S2_Date_Naissance', isoDate(c.child.dob));
+    [[c.parentA, '1'], [c.parentB, '2']].forEach(([p, n]) => {
+      if (!hasPerson(p)) return;
+      f.text('S2_Tuteur_Nom' + n, fullName(p)); f.text('S2_Tuteur_Adresse' + n, addr(p));
+      f.text('S2_Tuteur_Ville' + n, p.city); f.text('S2_Tuteur_Province' + n, 'Québec'); f.text('S2_Tuteur_CodePostal' + n, p.postal);
+      f.text('S2_Tuteur_Courriel' + n, p.email); f.text('S2_Tuteur_Telephone' + n, p.homeTel || p.workTel); f.text('S2_Tuteur_Cellulaire' + n, p.cell);
+    });
+    f.text('S2_Prestataire_Nom1', fullName(r)); f.text('S2_Prestataire_Adresse1', addr(r));
+    f.text('S2_Prestataire_Ville1', r.city); f.text('S2_Prestataire_Province1', 'Québec'); f.text('S2_Prestataire_CodePostal1', r.postal);
+    f.text('S2_Prestataire_Telephone1', r.phone || r.cell);
+    ['S3_B_Nom1', 'S3_C_Nom1', 'S3_E_Nom1'].forEach(k => f.text(k, fullName(r)));
+    await finish(doc);
+  }
+
+  // The two disability forms are only made for children with "Child has a disability" ticked.
+  const DISABILITY_FORMS = ['integration', 'rapport'];
+
   // Any mix of forms for any mix of children, in one file: child by child, the ticked forms in the usual order.
-  const FORM_FILLERS = { ententeBC: fillEntenteBC, ententeMinistere: fillEntenteMinistere, renseignements: fillRenseignements, contribution: fillContribution, fiche: fillFiche };
+  const FORM_FILLERS = { ententeBC: fillEntenteBC, ententeMinistere: fillEntenteMinistere, renseignements: fillRenseignements, contribution: fillContribution, fiche: fillFiche, integration: fillIntegration, rapport: fillRapport };
   async function makeForms(load, S, children, keys) {
     const docs = [];
     for (const c of children) {
       for (const key of Object.keys(FORM_FILLERS)) {
         if (!keys.includes(key)) continue;
+        if (DISABILITY_FORMS.includes(key) && !c.disability) continue;
         const doc = await loadTemplate(load, key);
         await FORM_FILLERS[key](doc, S, c);
         docs.push(doc);
       }
     }
+    if (!docs.length) throw new Error('Nothing to make. The integration plan and the professional\'s report are only made for children with "Child has a disability" ticked.');
     return assemble(docs);
   }
 

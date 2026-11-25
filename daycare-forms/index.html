@@ -85,7 +85,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.6.1 · type it once, print every French form · nothing leaves this tablet</div>
+    <div class="subtitle">v1.8 · type it once, print every French form · nothing leaves this device</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -98,8 +98,14 @@
     <div class="row">
       <button class="primary big" id="btnNew">+ New child</button>
       <button class="big" id="btnFormsMany">Forms for several children</button>
+      <button class="big" id="btnParents">Parent info</button>
       <button class="big" data-go="attendance">Attendance sheets</button>
       <button class="big" data-go="settings">Daycare settings</button>
+    </div>
+
+    <div id="parentsWrap" class="hidden">
+      <h2>New from parents</h2>
+      <div id="listParents"></div>
     </div>
 
     <h2>Current children</h2>
@@ -111,7 +117,7 @@
     </details>
 
     <h3>Backup</h3>
-    <p class="help">Everything is saved in Chrome on this tablet only. If Chrome's data is ever cleared, it is gone.
+    <p class="help">Everything is saved in Chrome on this device only. If Chrome's data is ever cleared, it is gone.
       Save a backup file now and then (for example, to Google Drive) so you can bring it all back.</p>
     <div class="row">
       <button id="btnBackup">Save backup</button>
@@ -124,6 +130,7 @@
   <!-- ================= CHILD EDITOR ================= -->
   <section id="v-child" class="hidden">
     <h2 id="childTitle">New child</h2>
+    <div id="reviewNote" class="banner hidden"></div>
 
     <h3>Child</h3>
     <div class="grid">
@@ -148,6 +155,8 @@
     <div class="q hidden" id="shiftQ"><div class="qt">Which daycare?</div>
       <div class="seg" data-seg="shift"><button type="button" data-v="day">Day</button><button type="button" data-v="night">Night</button></div>
       <p class="help">Choosing Night fills in the days and times from your night hours (Daycare settings). You can still change them below.</p></div>
+    <label class="check"><input type="checkbox" data-k="disability"> Child has a disability (allowance for integration into childcare)</label>
+    <div id="disabilityWarn" class="banner hidden"></div>
     <div class="q"><div class="qt">Days the child comes</div>
       <div class="seg" id="daysSeg"></div></div>
     <div class="grid">
@@ -184,7 +193,7 @@
       <div class="seg" data-seg="prevContribution"><button type="button" data-v="true">Yes</button><button type="button" data-v="false">No</button></div></div>
 
     <h3>Extra</h3>
-    <label class="check"><input type="checkbox" data-k="includeMinistere"> Also include the Ministère contract (Entente de services subventionnés, 5 pages). Most families don't need it.</label>
+    <label class="check"><input type="checkbox" data-k="includeMinistere"> Also include the Ministry's own contract (subsidized services agreement, 5 pages). Most families don't need it.</label>
 
     <div id="childStatus" class="status hidden"></div>
 
@@ -223,22 +232,26 @@
     </div>
 
     <h3>Opening hours</h3>
-    <p class="help">Write "Fermé" for closed days.</p>
+    <p class="help">Write "Closed" for closed days. The forms print it in French.</p>
     <table class="hours" id="hoursTable"></table>
+
+    <h3>Parent page</h3>
+    <label class="f wide">Daycare name shown to parents<input type="text" data-s="daycareName" placeholder="e.g. Little Stars Daycare"></label>
 
     <h3>Night daycare</h3>
     <label class="check"><input type="checkbox" id="nightEnabled"> I also run a night daycare</label>
     <div id="nightWrap" class="hidden">
-      <p class="help">The night daycare is registered separately: each child is either Day or Night. A night child's contract shows these hours. Write "Fermé" for closed days.</p>
+      <p class="help">The night daycare is registered separately: each child is either Day or Night. A night child's contract shows these hours. Write "Closed" for closed days.</p>
       <table class="hours" id="nightHoursTable"></table>
     </div>
 
-    <h3>Contract details (Entente pour garde)</h3>
+    <h3>Contract details</h3>
     <div class="grid">
-      <label class="f wide">Vacation closures<input type="text" data-s="vacation" placeholder="e.g. Deux semaines en août"></label>
+      <label class="f wide">Vacation closures (type in French)<input type="text" data-s="vacation" placeholder="e.g. Deux semaines en août"></label>
       <label class="f">Extra-hours rate<input type="text" data-s="overtimeRate" placeholder="e.g. 5 $"></label>
       <label class="f">…for each<input type="text" data-s="overtimeUnit" placeholder="e.g. 15 min"></label>
     </div>
+    <p class="help">These three boxes print on the contract exactly as typed, so write them in French.</p>
     <div class="q"><div class="qt">Parents pay…</div>
       <div class="seg" data-sseg="payFrequency"><button type="button" data-v="weekly">Every week</button><button type="button" data-v="biweekly">Every two weeks</button><button type="button" data-v="monthly">Every month</button></div></div>
     <div class="q"><div class="qt">Parents pay by…</div>
@@ -246,7 +259,7 @@
     <div class="q"><div class="qt">Do you charge parents the reduced contribution for closure days?</div>
       <div class="seg" data-sseg="claimClosure"><button type="button" data-v="true">Oui</button><button type="button" data-v="false">Non</button></div></div>
 
-    <h3>Meal times (only for the Ministère contract)</h3>
+    <h3>Meal times (only for the Ministry contract)</h3>
     <div class="grid">
       <label class="f">Morning snack<input type="text" data-s="snackAM" placeholder="10:00"></label>
       <label class="f">Lunch<input type="text" data-s="lunch" placeholder="12:00"></label>
@@ -293,6 +306,21 @@
     </div>
   </section>
 
+  <!-- ================= PARENT INFO ================= -->
+  <section id="v-parents" class="hidden">
+    <h2>Parent info</h2>
+    <p class="help">Parents fill in their child's information on a page of their own and send you a Word file. You import it here. This app sends nothing by itself.</p>
+    <h3>1. Send the link to parents</h3>
+    <label class="f wide">Link for parents<input type="text" id="parentLink" readonly></label>
+    <div class="row" style="margin-top:10px"><button class="primary" id="btnCopyLink">Copy link</button><button id="btnShareLink" class="hidden">Share link…</button></div>
+    <p class="help" id="parentNameHint"></p>
+    <h3>2. Import what parents send back</h3>
+    <p class="help">Choose one or several Word files (.docx). Each one becomes a new child under "New from parents", ready for you to check. Nothing you already have is changed.</p>
+    <div class="row"><button class="primary" id="btnImportParents">Choose files…</button><input type="file" id="parentFiles" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple class="hidden"></div>
+    <div id="parentsStatus" class="status hidden"></div>
+    <div class="sticky row"><button data-go="home">Back</button></div>
+  </section>
+
   <!-- ================= MAKE FORMS ================= -->
   <section id="v-forms" class="hidden">
     <h2>Make forms</h2>
@@ -314,7 +342,7 @@
   <!-- ================= CHILD LEFT ================= -->
   <section id="v-left" class="hidden">
     <h2 id="leftTitle">Child left</h2>
-    <p class="help">This makes the Attestation des services de garde fournis (3 copies: parent, you, the office), and moves the child to "Past children". The day counts stay blank, as usual. The signature stays blank for you to sign.</p>
+    <p class="help">This makes the attestation of childcare services provided (Attestation des services de garde fournis, 3 copies: parent, you, the office), and moves the child to "Past children". The day counts stay blank, as usual. The signature stays blank for you to sign.</p>
     <div class="grid"><label class="f">Last day at the daycare<input type="date" id="leftDate"></label>
       <label class="f">Date of the Attestation<input type="date" id="attestDate"></label></div>
     <div id="leftStatus" class="status hidden"></div>
@@ -326,13 +354,14 @@
   </section>
 
   <footer>
-    Nothing is uploaded: the forms are filled in on this tablet.<br>
-    Forms: 2026 versions from BC du Parc (email of Aug 5, 2026).
+    Nothing is uploaded: the forms are filled in on this device.<br>
+    Forms: 2026 versions from BC du Parc.
   </footer>
 </div>
 
 <script src="vendor/pdf-lib.min.js"></script>
 <script src="forms.js"></script>
+<script src="docx-lite.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

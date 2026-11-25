@@ -1,23 +1,30 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.6.1';
+  const VERSION = '1.8';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
   const clone = o => JSON.parse(JSON.stringify(o));
   const DAY_LETTERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const DAY_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  // Settings merged over the defaults; "Fermé" typed in older versions shows as "Closed" (the forms still print Fermé).
+  function mergeSettings(x) {
+    const st = Object.assign(clone(DEFAULT_SETTINGS), x || {});
+    [st.hours, st.nightHours].forEach(a => (a || []).forEach(h => { if (h && /^ferm/i.test(h.open || '')) h.open = 'Closed'; }));
+    return st;
+  }
 
   // ---------- data ----------
 
   const DEFAULT_SETTINGS = {
     rsge: { first: '', last: '', street: '', apt: '', city: '', postal: '', phone: '', cell: '', other: '' },
-    bcName: 'BC du Parc', division: '10586', rate: '9.65',
-    hours: [0, 1, 2, 3, 4].map(() => ({ open: '9:30', close: '14:30' })).concat([{ open: 'Fermé', close: '' }, { open: 'Fermé', close: '' }]),
+    bcName: 'BC du Parc', division: '', rate: '9.65',
+    hours: [0, 1, 2, 3, 4].map(() => ({ open: '9:30', close: '14:30' })).concat([{ open: 'Closed', close: '' }, { open: 'Closed', close: '' }]),
     // Night daycare (registered separately). Monday first, like the day hours: open Sunday to Thursday.
     nightEnabled: false,
-    nightHours: [0, 1, 2, 3].map(() => ({ open: '19:00', close: '00:00' })).concat([{ open: 'Fermé', close: '' }, { open: 'Fermé', close: '' }, { open: '19:00', close: '00:00' }]),
+    nightHours: [0, 1, 2, 3].map(() => ({ open: '19:00', close: '00:00' })).concat([{ open: 'Closed', close: '' }, { open: 'Closed', close: '' }, { open: '19:00', close: '00:00' }]),
+    daycareName: '',
     vacation: '', claimClosure: false, overtimeRate: '', overtimeUnit: '',
     payFrequency: 'biweekly', payMethod: 'cash',
     snackAM: '', lunch: '', snackPM: '',
@@ -32,10 +39,10 @@
       id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       child: { first: '', last: '', dob: '', sex: '' },
       parentA: emptyParent('Mère'), parentB: emptyParent('Père'),
-      noParentB: false, sameAddr: true, shift: 'day',
+      noParentB: false, sameAddr: true, shift: 'day', disability: false,
       payer: 'A', citizen: true, status: '', benefits: false, prevContribution: false,
       days: [true, true, true, true, true, false, false],
-      arrive: /ferm/i.test(mon.open || '') ? '' : (mon.open || ''), depart: mon.close || '',
+      arrive: /ferm|closed/i.test(mon.open || '') ? '' : (mon.open || ''), depart: mon.close || '',
       startDate: '', endDate: '', contribution: 'reduced', includeMinistere: false,
       signDate: today(), signPlace: (S.rsge && S.rsge.city) || '', decisionDate: today(), leftDate: '', attestDate: '', created: new Date().toISOString(),
     };
@@ -55,7 +62,7 @@
 
   // Day or night: which opening hours apply to a child.
   const hoursOf = c => (c.shift === 'night' ? db.settings.nightHours : db.settings.hours);
-  const isOpenDay = h => !!(h && h.open && !/ferm/i.test(h.open));
+  const isOpenDay = h => !!(h && h.open && !/ferm|closed/i.test(h.open));
   // Fills the days and times from the daycare's hours (used when Day/Night is chosen).
   function applyShiftTo(c) {
     const h = hoursOf(c);
@@ -70,7 +77,7 @@
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        db.settings = Object.assign(clone(DEFAULT_SETTINGS), d.settings || {});
+        db.settings = mergeSettings(d.settings);
         db.settings.rsge = Object.assign(clone(DEFAULT_SETTINGS.rsge), (d.settings || {}).rsge || {});
         db.children = Array.isArray(d.children) ? d.children.map(upgradeChild) : [];
       }
@@ -153,12 +160,13 @@
 
   // ---------- navigation ----------
 
-  const VIEWS = ['home', 'child', 'settings', 'attendance', 'forms', 'left'];
+  const VIEWS = ['home', 'child', 'settings', 'attendance', 'forms', 'parents', 'left'];
   function go(view) {
     VIEWS.forEach(v => $('#v-' + v).classList.toggle('hidden', v !== view));
     if (view === 'home') renderHome();
     if (view === 'settings') renderSettings();
     if (view === 'attendance') renderAttendance();
+    if (view === 'parents') renderParents();
     window.scrollTo(0, 0);
   }
   $$('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
@@ -172,8 +180,19 @@
 
   function renderHome() {
     $('#setupBanner').classList.toggle('hidden', settingsComplete());
-    const current = db.children.filter(c => !c.leftDate).sort((a, b) => childName(a).localeCompare(childName(b)));
+    const fromParents = db.children.filter(c => c.fromParent && !c.leftDate).sort((a, b) => childName(a).localeCompare(childName(b)));
+    const current = db.children.filter(c => !c.leftDate && !c.fromParent).sort((a, b) => childName(a).localeCompare(childName(b)));
     const past = db.children.filter(c => c.leftDate).sort((a, b) => (b.leftDate || '').localeCompare(a.leftDate || ''));
+    $('#parentsWrap').classList.toggle('hidden', !fromParents.length);
+    $('#listParents').innerHTML = fromParents.map(c => `
+      <div class="card">
+        <div class="name">${esc(childName(c))}</div>
+        <div class="meta">Sent by a parent · needs review${c.possibleDuplicate ? ' · may already be in your list' : ''}</div>
+        <div class="row">
+          <button class="primary" data-act="edit" data-id="${c.id}">Review</button>
+          <button data-act="discard" data-id="${c.id}">Discard</button>
+        </div>
+      </div>`).join('');
     $('#listCurrent').innerHTML = current.length ? current.map(c => `
       <div class="card">
         <div class="name">${esc(childName(c))}</div>
@@ -205,6 +224,10 @@
     const c = db.children.find(x => x.id === b.dataset.id); if (!c) return;
     const act = b.dataset.act;
     if (act === 'edit') openChild(c);
+    if (act === 'discard') {
+      if (!confirm('Discard the information from the parent for ' + childName(c) + '?')) return;
+      db.children = db.children.filter(x => x.id !== c.id); save(); renderHome();
+    }
     if (act === 'make') openForms(c.id);
     if (act === 'left') openLeft(c);
     if (act === 'attest') await makeAttestation(c, b);
@@ -238,6 +261,9 @@
     $('#childTitle').textContent = c ? childName(c) : 'New child';
     $('#btnChildDelete').classList.toggle('hidden', !c);
     $('#childStatus').classList.add('hidden');
+    const note = $('#reviewNote');
+    note.classList.toggle('hidden', !editing.fromParent);
+    note.textContent = editing.fromParent ? 'Sent by a parent. Check everything, then add what only you know: the start date, contract choices, who signs, and the signing dates. Saving removes the "needs review" tag.' + (editing.possibleDuplicate ? ' A child with this name and birth date is already in your list. If it is the same child, discard this one.' : '') : '';
     fillChildForm();
     go('child');
   }
@@ -258,18 +284,39 @@
     refreshChildVisibility();
   }
 
+  // Each daycare (day, night) may have one child with a disability, or two siblings (same last name).
+  // This only warns. It never blocks saving or making forms.
+  function disabilityNote(c) {
+    if (!c || !c.disability) return '';
+    const shift = c.shift === 'night' ? 'night' : 'day';
+    const others = db.children.filter(x => x.id !== c.id && x.disability && !x.leftDate && (x.shift === 'night' ? 'night' : 'day') === shift);
+    if (!others.length) return '';
+    const last = x => (x.child.last || '').trim().toLowerCase();
+    const group = others.concat([c]);
+    if (group.length === 2 && last(group[0]) && last(group[0]) === last(group[1])) return '';   // two siblings: allowed
+    return 'Your ' + shift + ' daycare already has ' + (others.length > 1 ? 'children' : 'a child') + ' with a disability: ' +
+      others.map(childName).join(', ') + '. Normally only one child is allowed per daycare, or two siblings with the same last name. You can still save and make forms.';
+  }
+  function updateDisabilityWarn() {
+    const note = $('#disabilityWarn'); if (!note || !editing) return;
+    const msg = disabilityNote(editing);
+    note.textContent = msg; note.classList.toggle('hidden', !msg);
+  }
+
   function refreshChildVisibility() {
     const c = editing;
     $('#parentBWrap').classList.toggle('hidden', !!c.noParentB);
     $$('#parentB [data-addr="1"]').forEach(el => el.classList.toggle('hidden', c.sameAddr !== false));
     $('#statusQ').classList.toggle('hidden', c.citizen !== false);
     $('#shiftQ').classList.toggle('hidden', !(db.settings.nightEnabled || c.shift === 'night'));
+    updateDisabilityWarn();
     $$('[data-seg="payer"] button[data-v="B"]').forEach(b => { b.disabled = !!c.noParentB; });
   }
 
   $('#v-child').addEventListener('input', e => {
     const el = e.target; if (!el.dataset.k || !editing) return;
     set(editing, el.dataset.k, el.type === 'checkbox' ? el.checked : el.value);
+    if (el.dataset.k === 'child.last') updateDisabilityWarn();
   });
   // The office-page date follows the signing date until it is changed on its own.
   let lastSign = null;
@@ -285,6 +332,7 @@
   $('#v-child').addEventListener('change', e => {
     const el = e.target; if (!editing) return;
     if (el.dataset.k && el.type === 'checkbox') set(editing, el.dataset.k, el.checked);
+    if (el.dataset.k === 'disability') updateDisabilityWarn();
   });
   // Tidy on blur only.
   document.addEventListener('blur', e => {
@@ -351,6 +399,7 @@
 
   function saveEditing() {
     if (editing.attendanceOnly && (editing.child.dob || editing.startDate)) delete editing.attendanceOnly;
+    delete editing.fromParent; delete editing.possibleDuplicate;
     const i = db.children.findIndex(x => x.id === editing.id);
     if (i >= 0) db.children[i] = clone(editing); else db.children.push(clone(editing));
     return save();
@@ -375,11 +424,13 @@
   // ---------- make forms: pick the forms, pick the children ----------
 
   const FORM_LIST = [
-    ['ententeBC', 'Contract (Entente pour garde)', 'Contract'],
-    ['ententeMinistere', 'Ministère contract (5 pages, most families do not need it)', 'Ministère contract'],
-    ['renseignements', 'Formulaire de renseignements', 'Renseignements'],
-    ['contribution', 'Contribution réduite', 'Contribution'],
-    ['fiche', "Fiche d'identification", 'Fiche'],
+    ['ententeBC', 'Contract with the parents', 'Contract'],
+    ['ententeMinistere', 'Ministry contract (5 pages, most families do not need it)', 'Ministry contract'],
+    ['renseignements', 'Information form (Formulaire de renseignements)', 'Information form'],
+    ['contribution', 'Reduced contribution form (Contribution réduite)', 'Contribution form'],
+    ['fiche', "ID form (Fiche d'identification)", 'ID form'],
+    ['integration', "Integration plan (Plan d'intégration et bilan), only for children with a disability", 'Integration plan'],
+    ['rapport', "Professional's report (Rapport professionnel), only for children with a disability", 'Professional report'],
   ];
   let formsSel = new Set(), kidsSel = new Set();
 
@@ -389,6 +440,7 @@
     const c = childId && db.children.find(x => x.id === childId);
     formsSel = new Set(FORM_LIST.map(f => f[0]));
     if (!(c && c.includeMinistere)) formsSel.delete('ententeMinistere');
+    if (!(c && c.disability)) { formsSel.delete('integration'); formsSel.delete('rapport'); }
     kidsSel = new Set(c ? [c.id] : []);
     $('#formsStatus').classList.add('hidden');
     go('forms');
@@ -401,7 +453,7 @@
     const note = t => ` <span style="color:var(--muted)">(${esc(t)})</span>`;
     $('#formsKids').innerHTML = kids.length ? kids.map(c =>
       `<label class="check"><input type="checkbox" data-kid="${c.id}" ${kidsSel.has(c.id) ? 'checked' : ''}> ${esc(childName(c))}` +
-      (c.shift === 'night' ? note('night') : '') + (c.leftDate ? note('left ' + c.leftDate) : '') + (c.attendanceOnly ? note('attendance only, details missing') : '') + '</label>').join('')
+      (c.shift === 'night' ? note('night') : '') + (c.leftDate ? note('left ' + c.leftDate) : '') + (c.attendanceOnly ? note('attendance only, details missing') : '') + (c.fromParent ? note('from a parent, not reviewed yet') : '') + (c.disability ? note(disabilityNote(c) ? 'disability: check the limit' : 'disability') : '') + '</label>').join('')
       : '<div class="empty">No children yet. Tap "+ New child" on the main screen.</div>';
   }
   $('#v-forms').addEventListener('change', e => {
@@ -429,12 +481,103 @@
       const who = kids.length === 1 ? childName(kids[0]) : kids.length + ' children';
       const name = fileSafe(what + ' - ' + who) + '.pdf';
       download(bytes, name);
-      const warn = kids.map(c => { const m = missing(c, keys); return m.length ? childName(c) + ': ' + m.join(', ') : ''; }).filter(Boolean);
+      const onlyDis = keys.every(k => k === 'integration' || k === 'rapport');
+      const need = c => {
+        if (!onlyDis) return missing(c, keys);
+        const m = [];   // the disability forms only use these
+        if (!c.child.first || !c.child.last) m.push("child's name");
+        if (!c.child.dob) m.push("child's date of birth");
+        if (!c.parentA.first && !c.parentA.last) m.push("Parent A's name");
+        return m;
+      };
+      const warn = kids.map(c => { const m = need(c); return m.length ? childName(c) + ': ' + m.join(', ') : ''; }).filter(Boolean);
+      const wantsDis = keys.some(k => k === 'integration' || k === 'rapport');
+      const skipped = wantsDis ? kids.filter(c => !c.disability).map(childName) : [];
+      const limit = wantsDis ? kids.map(disabilityNote).filter(Boolean)[0] : '';
       showStatus(st, 'Downloaded "' + name + '". Print it double-sided.' +
-        (warn.length ? " Left blank because it wasn't filled in: " + warn.join('; ') + '.' : ''), warn.length > 0);
+        (warn.length ? " Left blank because it wasn't filled in: " + warn.join('; ') + '.' : '') +
+        (skipped.length ? ' The integration forms were not made for ' + skipped.join(', ') + ' (no "Child has a disability" box ticked).' : '') +
+        (limit ? ' Warning: ' + limit : ''), warn.length > 0 || skipped.length > 0 || !!limit);
     } catch (err) {
       showStatus(st, 'Something went wrong making the forms: ' + err.message, true);
     } finally { btn.disabled = false; btn.textContent = label; }
+  });
+
+  // ---------- parent info: a link to send, and Word files to import ----------
+
+  function parentLink() {
+    const u = new URL('parent.html', location.href);
+    u.search = ''; u.hash = '';
+    const n = (db.settings.daycareName || '').trim();
+    if (n) u.searchParams.set('d', n);
+    return u.toString();
+  }
+  function renderParents() {
+    $('#parentLink').value = parentLink();
+    $('#btnShareLink').classList.toggle('hidden', !navigator.share);
+    $('#parentNameHint').textContent = (db.settings.daycareName || '').trim()
+      ? 'Parents will see "For ' + db.settings.daycareName.trim() + '" at the top of the page.'
+      : 'Tip: add your daycare\'s name in Daycare settings (Parent page) and parents will see it at the top.';
+    $('#parentsStatus').classList.add('hidden');
+  }
+  $('#btnParents').addEventListener('click', () => go('parents'));
+  $('#btnCopyLink').addEventListener('click', async () => {
+    const link = $('#parentLink').value;
+    try { await navigator.clipboard.writeText(link); showStatus($('#parentsStatus'), 'Link copied. Paste it into a message or an email to the parents.', false); }
+    catch (e) { $('#parentLink').select(); showStatus($('#parentsStatus'), 'Select and copy the link above.', true); }
+  });
+  $('#btnShareLink').addEventListener('click', async () => {
+    try { await navigator.share({ title: 'Child registration', text: "Please fill in your child's information here:", url: $('#parentLink').value }); } catch (e) { /* cancelled */ }
+  });
+
+  // One Word file from a parent -> a new child, flagged "needs review". Never touches an existing child.
+  function childFromRows(rows) {
+    const map = {};
+    rows.forEach(r => { if (r.length >= 2) map[r[0].trim().toLowerCase()] = r.slice(1).join(' ').trim().slice(0, 200); });
+    const g = k => map[k.toLowerCase()] || '';
+    if (!/^daycare forms registration info/i.test(g('Form'))) throw new Error('this is not a parent info file from the parent page');
+    const c = newChild(db.settings);
+    const dob = g('Child: date of birth');
+    c.child = {
+      first: FORMAT.name(g('Child: first name')), last: FORMAT.name(g('Child: last name')),
+      dob: /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : '', sex: { boy: 'M', girl: 'F' }[g('Child: sex').toLowerCase()] || '',
+    };
+    if (!c.child.first && !c.child.last) throw new Error("the child's name is missing");
+    const REL = { mother: 'Mère', father: 'Père', guardian: 'Tuteur' };
+    const person = (p, def) => {
+      const o = emptyParent(REL[g('Parent ' + p + ': relation').toLowerCase()] || def), f = k => g('Parent ' + p + ': ' + k);
+      o.first = FORMAT.name(f('first name')); o.last = FORMAT.name(f('last name'));
+      o.street = FORMAT.name(f('street address')); o.apt = f('apartment');
+      o.city = FORMAT.city(f('city')); o.postal = FORMAT.postal(f('postal code'));
+      o.homeTel = FORMAT.phone(f('home phone')); o.cell = FORMAT.phone(f('cell phone')); o.workTel = FORMAT.phone(f('work phone'));
+      o.email = f('email'); o.sin = FORMAT.sin(f('social insurance number'));
+      return o;
+    };
+    c.parentA = person('A', 'Mère');
+    const hasB = g('Parent B: included').toLowerCase() === 'yes';
+    c.noParentB = !hasB;
+    c.parentB = hasB ? person('B', 'Père') : emptyParent('Père');
+    c.sameAddr = g('Parent B: same address and home phone as Parent A').toLowerCase() !== 'no';
+    c.fromParent = true;
+    const same = x => x.child.first.trim().toLowerCase() === c.child.first.toLowerCase() && x.child.last.trim().toLowerCase() === c.child.last.toLowerCase() && !!c.child.dob && x.child.dob === c.child.dob;
+    if (db.children.some(same)) c.possibleDuplicate = true;
+    return c;
+  }
+  $('#btnImportParents').addEventListener('click', () => $('#parentFiles').click());
+  $('#parentFiles').addEventListener('change', async e => {
+    const files = Array.from(e.target.files || []), added = [], dupes = [], bad = [];
+    for (const f of files) {
+      try {
+        const c = childFromRows(await DocxLite.readDocxRows(new Uint8Array(await f.arrayBuffer())));
+        db.children.push(c); added.push(childName(c)); if (c.possibleDuplicate) dupes.push(childName(c));
+      } catch (err) { bad.push(f.name + ' (' + (err.message || 'could not be read') + ')'); }
+    }
+    e.target.value = '';
+    if (added.length) save();
+    const msg = (added.length ? 'Imported ' + added.length + ': ' + added.join(', ') + '. They are under "New from parents" on the main screen.' : 'Nothing was imported.') +
+      (dupes.length ? ' May already be in your list: ' + dupes.join(', ') + '.' : '') +
+      (bad.length ? ' Skipped: ' + bad.join('; ') + '.' : '');
+    showStatus($('#parentsStatus'), msg, !added.length || bad.length > 0);
   });
 
   // ---------- settings ----------
@@ -447,12 +590,12 @@
       const v = String(get(editingS, seg.dataset.sseg));
       seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
     });
-    $('#hoursTable').innerHTML = DAY_FR.map((d, i) => `<tr><td>${d}</td>
+    $('#hoursTable').innerHTML = DAY_NAMES.map((d, i) => `<tr><td>${d}</td>
       <td><input type="text" data-h="${i}.open" value="${esc(editingS.hours[i].open)}" aria-label="${d} opening"></td>
       <td><input type="text" data-h="${i}.close" value="${esc(editingS.hours[i].close)}" aria-label="${d} closing"></td></tr>`).join('');
     $('#nightEnabled').checked = !!editingS.nightEnabled;
     $('#nightWrap').classList.toggle('hidden', !editingS.nightEnabled);
-    $('#nightHoursTable').innerHTML = DAY_FR.map((d, i) => `<tr><td>${d}</td>
+    $('#nightHoursTable').innerHTML = DAY_NAMES.map((d, i) => `<tr><td>${d}</td>
       <td><input type="text" data-nh="${i}.open" value="${esc(editingS.nightHours[i].open)}" aria-label="Night ${d} opening"></td>
       <td><input type="text" data-nh="${i}.close" value="${esc(editingS.nightHours[i].close)}" aria-label="Night ${d} closing"></td></tr>`).join('');
     const T = DaycareForms.TEMPLATES;
@@ -597,8 +740,8 @@
       const d = JSON.parse(await f.text());
       if (d.app !== 'daycare-forms' || !Array.isArray(d.children)) throw new Error('That file is not a Daycare Forms backup.');
       const n = d.children.length;
-      if (!confirm('Replace what is on this tablet with the backup from ' + (d.saved || '').slice(0, 10) + ' (' + n + ' children)?')) return;
-      db = { settings: Object.assign(clone(DEFAULT_SETTINGS), d.settings || {}), children: d.children.map(upgradeChild) };
+      if (!confirm('Replace what is on this device with the backup from ' + (d.saved || '').slice(0, 10) + ' (' + n + ' children)?')) return;
+      db = { settings: mergeSettings(d.settings), children: d.children.map(upgradeChild) };
       save(); renderHome();
       showStatus($('#homeStatus'), 'Backup loaded: ' + n + ' children.');
     } catch (err) { showStatus($('#homeStatus'), err.message, true); }
