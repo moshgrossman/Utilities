@@ -85,7 +85,7 @@
 <div class="container">
   <header>
     <h1>Daycare Forms</h1>
-    <div class="subtitle">v1.8 · type it once, print every French form · nothing leaves this device</div>
+    <div class="subtitle">v1.9 · type it once, print every French form · nothing leaves this device</div>
   </header>
 
   <!-- ================= HOME ================= -->
@@ -279,11 +279,12 @@
   <!-- ================= ATTENDANCE ================= -->
   <section id="v-attendance" class="hidden">
     <h2>Attendance sheets</h2>
-    <p class="help">One sheet per child: the names, the two weeks, and the payment and signature dates (the second Friday) are filled in. You write the P/A codes and amounts by hand. Print single-sided.</p>
+    <p class="help">One sheet per child: the names, the two weeks, and the payment and signature dates (the last open day of the second week) are filled in. You write the P/A codes and amounts by hand. Print single-sided.</p>
     <div class="grid">
       <label class="f">First Monday of the two weeks<input type="date" id="attStart"></label>
     </div>
     <div id="attStartNote" class="status hidden"></div>
+    <div class="row" style="margin-top:8px"><button id="btnAttForget" class="hidden">Forget the last sheets date</button></div>
     <h3>Children</h3>
     <div id="attList"></div>
 
@@ -294,6 +295,7 @@
       <label class="f">Child's last name<input type="text" id="qChildLast" data-fmt="name" autocomplete="off"></label>
       <label class="f">Parent's first name<input type="text" id="qParentFirst" data-fmt="name" autocomplete="off"></label>
       <label class="f">Parent's last name<input type="text" id="qParentLast" data-fmt="name" autocomplete="off"></label>
+      <label class="f">First day at the daycare<input type="date" id="qFirstDay"></label>
       <label class="f hidden" id="qShiftWrap">Which daycare?<select id="qShift"><option value="day">Day</option><option value="night">Night</option></select></label>
     </div>
     <div class="row" style="margin-top:12px"><button id="btnQuickAdd">+ Add to the list</button></div>
@@ -302,6 +304,7 @@
     <div class="sticky row">
       <button data-go="home">Back</button>
       <span class="grow"></span>
+      <button class="hidden primary" id="btnAttDone">Done</button>
       <button class="primary" id="btnAttMake">Make attendance sheets</button>
     </div>
   </section>
@@ -335,6 +338,7 @@
     <div class="sticky row">
       <button data-go="home">Back</button>
       <span class="grow"></span>
+      <button class="hidden primary" id="btnFormsDone">Done</button>
       <button class="primary" id="btnFormsMake">Make</button>
     </div>
   </section>

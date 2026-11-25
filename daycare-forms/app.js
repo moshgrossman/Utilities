@@ -1,7 +1,7 @@
 /* Daycare Forms — screens, saving, and downloads. The form filling itself is in forms.js. */
 (function () {
   'use strict';
-  const VERSION = '1.8';
+  const VERSION = '1.9';
   const STORE_KEY = 'daycareForms.v1';
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -25,6 +25,7 @@
     nightEnabled: false,
     nightHours: [0, 1, 2, 3].map(() => ({ open: '19:00', close: '00:00' })).concat([{ open: 'Closed', close: '' }, { open: 'Closed', close: '' }, { open: '19:00', close: '00:00' }]),
     daycareName: '',
+    lastSheetStart: '',   // first Monday of the last attendance sheets made; the next default is 14 days later
     vacation: '', claimClosure: false, overtimeRate: '', overtimeUnit: '',
     payFrequency: 'biweekly', payMethod: 'cash',
     snackAM: '', lunch: '', snackPM: '',
@@ -442,7 +443,7 @@
     if (!(c && c.includeMinistere)) formsSel.delete('ententeMinistere');
     if (!(c && c.disability)) { formsSel.delete('integration'); formsSel.delete('rapport'); }
     kidsSel = new Set(c ? [c.id] : []);
-    $('#formsStatus').classList.add('hidden');
+    $('#formsStatus').classList.add('hidden'); $('#btnFormsDone').classList.add('hidden');
     go('forms');
     renderForms();
   }
@@ -498,6 +499,7 @@
         (warn.length ? " Left blank because it wasn't filled in: " + warn.join('; ') + '.' : '') +
         (skipped.length ? ' The integration forms were not made for ' + skipped.join(', ') + ' (no "Child has a disability" box ticked).' : '') +
         (limit ? ' Warning: ' + limit : ''), warn.length > 0 || skipped.length > 0 || !!limit);
+      $('#btnFormsDone').classList.remove('hidden');
     } catch (err) {
       showStatus(st, 'Something went wrong making the forms: ' + err.message, true);
     } finally { btn.disabled = false; btn.textContent = label; }
@@ -632,7 +634,7 @@
   }
   let attChosen = null;
   function renderAttendance() {
-    if (!$('#attStart').value) $('#attStart').value = mondayOf(new Date());
+    if (!$('#attStart').value) $('#attStart').value = db.settings.lastSheetStart ? DaycareForms.addDays(db.settings.lastSheetStart, 14) : mondayOf(new Date());
     const start = $('#attStart').value;
     const end = DaycareForms.addDays(start, 13);
     // Current children, plus anyone who left during these two weeks.
@@ -641,15 +643,38 @@
       .sort((a, b) => childName(a).localeCompare(childName(b)));
     attChosen = attChosen || new Set(list.map(c => c.id));
     $('#attList').innerHTML = list.length ? list.map(c =>
-      `<label class="check"><input type="checkbox" data-att="${c.id}" ${attChosen.has(c.id) ? 'checked' : ''}> ${esc(childName(c))}${c.leftDate ? ' <span style="color:var(--muted)">(left ' + esc(c.leftDate) + ')</span>' : ''}</label>`).join('')
+      `<label class="check"><input type="checkbox" data-att="${c.id}" ${attChosen.has(c.id) ? 'checked' : ''}> ${esc(childName(c))}${!c.startDate ? ' <span style="color:var(--muted)">(no first day yet)</span>' : ''}${c.leftDate ? ' <span style="color:var(--muted)">(left ' + esc(c.leftDate) + ')</span>' : ''}</label>`).join('')
       : '<div class="empty">No children attending in these two weeks.</div>';
     $('#qShiftWrap').classList.toggle('hidden', !db.settings.nightEnabled);
     const day = new Date(start + 'T12:00').getDay();
     const note = $('#attStartNote');
+    const last = db.settings.lastSheetStart;
+    $('#btnAttForget').classList.toggle('hidden', !last);
     if (day !== 1) showStatus(note, 'Heads-up: that date is a ' + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day] + ', not a Monday.', true);
-    else showStatus(note, 'Weeks starting ' + start + ' and ' + DaycareForms.addDays(start, 7) + '.');
+    else {
+      const add = n => DaycareForms.addDays(start, n);
+      let msg = 'Sheets for ' + fmtDay(start, false) + ' to ' + fmtDay(add(13), false) + '. Send to the office by ' + fmtDay(add(18), true) + '. Paid ' + fmtDay(add(24), true) + '.';
+      let warn = false;
+      if (last) {
+        const diff = Math.round((new Date(start + 'T12:00') - new Date(last + 'T12:00')) / 86400000);
+        if (diff % 14 !== 0) { msg += ' Heads-up: your last sheets started ' + fmtDay(last, false) + ', so this date is not on your 2-week cycle.'; warn = true; }
+      }
+      showStatus(note, msg, warn);
+    }
   }
-  $('#attStart').addEventListener('change', () => { attChosen = null; renderAttendance(); });
+  // "Friday Dec 4" (withWeekday) or "Dec 4"
+  function fmtDay(iso, withWeekday) {
+    const d = new Date(iso + 'T12:00');
+    return (withWeekday ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()] + ' ' : '') +
+      ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getDate();
+  }
+  $('#btnAttForget').addEventListener('click', () => {
+    db.settings.lastSheetStart = ''; save();
+    $('#attStart').value = ''; attChosen = null; $('#btnAttDone').classList.add('hidden'); renderAttendance();
+  });
+  $('#btnAttDone').addEventListener('click', () => go('home'));
+  $('#btnFormsDone').addEventListener('click', () => go('home'));
+  $('#attStart').addEventListener('change', () => { attChosen = null; $('#btnAttDone').classList.add('hidden'); renderAttendance(); });
 
   // Quick add: just the names an attendance sheet needs. The parent is entered as
   // Parent A, so the full forms can still be made later after filling in the rest.
@@ -657,17 +682,18 @@
     const v = id => FORMAT.name($('#' + id).value);
     const first = v('qChildFirst'), last = v('qChildLast');
     if (!first && !last) { showStatus($('#qStatus'), "Type the child's name.", true); return; }
+    if (!$('#qFirstDay').value) { showStatus($('#qStatus'), "Pick the child's first day at the daycare. The amount on the sheet counts from that day.", true); return; }
     // The parent's name goes on the sheet (the parent signs it), so it can't be skipped.
     if (!v('qParentFirst') && !v('qParentLast')) { showStatus($('#qStatus'), "Type the parent's name too. It goes on the attendance sheet.", true); return; }
     const c = newChild(db.settings);
     c.child.first = first; c.child.last = last;
     c.parentA.first = v('qParentFirst'); c.parentA.last = v('qParentLast');
-    c.noParentB = true; c.attendanceOnly = true;
+    c.noParentB = true; c.attendanceOnly = true; c.startDate = $('#qFirstDay').value;
     if (db.settings.nightEnabled && $('#qShift').value === 'night') { c.shift = 'night'; applyShiftTo(c); }
     db.children.push(c);
     const ok = save();
     if (attChosen) attChosen.add(c.id);
-    ['qChildFirst', 'qChildLast', 'qParentFirst', 'qParentLast'].forEach(id => { $('#' + id).value = ''; });
+    ['qChildFirst', 'qChildLast', 'qParentFirst', 'qParentLast', 'qFirstDay'].forEach(id => { $('#' + id).value = ''; });
     renderAttendance();
     showStatus($('#qStatus'), ok ? 'Added ' + childName(c) + '. It is ticked in the list above.' : 'Added, but Chrome is blocking saving. Use "Save backup".', !ok);
     $('#qChildFirst').focus();
@@ -683,10 +709,14 @@
     const start = $('#attStart').value;
     const kids = db.children.filter(c => attChosen && attChosen.has(c.id)).sort((a, b) => childName(a).localeCompare(childName(b)));
     if (!start || !kids.length) { showStatus($('#attStatus'), 'Pick the date and at least one child.', true); return; }
+    const noFirst = kids.filter(c => !c.startDate).map(childName);
+    if (noFirst.length && !confirm('No first day on file for ' + noFirst.join(', ') + '. Their amount will count the whole two weeks. Make the sheets anyway?')) return;
     btn.disabled = true;
     try {
       const bytes = await DaycareForms.attendanceSheets(loadTemplate, db.settings, kids.map(forForms), start);
       download(bytes, 'Attendance ' + start + '.pdf');
+      if (!db.settings.lastSheetStart || start > db.settings.lastSheetStart) { db.settings.lastSheetStart = start; save(); }
+      $('#btnAttDone').classList.remove('hidden'); $('#btnAttForget').classList.remove('hidden');
       showStatus($('#attStatus'), 'Downloaded "Attendance ' + start + '.pdf": ' + (kids.length > 1 ? kids.length + ' sheets, one per page. Print single-sided.' : '1 sheet.'));
     } catch (err) { showStatus($('#attStatus'), 'Something went wrong: ' + err.message, true); }
     finally { btn.disabled = false; }

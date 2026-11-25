@@ -472,7 +472,12 @@
     // Payment confirmation and signature dates, laid out the way the office's sheets are:
     // the second row is the second week, paid and signed on that week's Friday.
     // The amount paid is the rate times the open days booked over both weeks.
-    const friday = addDays(weekStart, 11);
+    // The payment and signature date is the last open day of the second week: Friday for the day
+    // daycare, Sunday for the night daycare (closed Friday and Saturday).
+    const closedDays = closedWeekdays(S, c);
+    let lastOpen = 4;
+    for (let i = 6; i >= 0; i--) if (!closedDays[i]) { lastOpen = i; break; }
+    const friday = addDays(monday, 7 + lastOpen);
     const amt = attendanceAmount(S, c, monday);
     const cols = [35.4, 166.9, 298.5, 430.1, 561.5];
     [241, 223.5].forEach((y, row) => {
